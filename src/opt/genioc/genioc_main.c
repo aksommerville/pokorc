@@ -10,6 +10,9 @@ static void genioc_quit_drivers() {
   #if PO_USE_x11
     po_x11_del(genioc.x11);
   #endif
+  #if PO_USE_alsa
+    alsa_del(genioc.alsa);
+  #endif
 }
 
 /* Signal handler.
@@ -42,6 +45,39 @@ static int genioc_cb_x11_close(struct po_x11 *x11) {
 
 #endif
 
+static void genioc_cb_pcm(int16_t *v,int c,int chanc) {
+  if (chanc<1) {
+    memset(v,0,c<<1);
+    return;
+  }
+  switch (chanc) {
+    case 1: {
+        for (;c-->0;v++) *v=audio_next();
+      } break;
+    case 2: {
+        int framec=c>>1;
+        for (;framec-->1;v+=2) v[0]=v[1]=audio_next();
+      } break;
+    default: {
+        int framec=c/chanc;
+        for (;framec-->1;) {
+          int16_t sample=audio_next();
+          int i=chanc;
+          for (;i-->0;v++) *v=sample;
+        }
+      }
+  }
+}
+
+#if PO_USE_alsa
+
+static int genioc_cb_alsa(int16_t *v,int c,struct alsa *alsa) {
+  genioc_cb_pcm(v,c,alsa_get_chanc(alsa));
+  return 0;
+}
+
+#endif
+
 /* Init drivers.
  */
  
@@ -58,6 +94,19 @@ static int genioc_init_drivers() {
       &genioc
     ))) {
       fprintf(stderr,"Failed to initialize X11\n");
+      return -1;
+    }
+  #endif
+  
+  #if PO_USE_alsa
+    struct alsa_delegate alsa_delegate={
+      .rate=22050,
+      .chanc=1,
+      .device=0,
+      .cb_pcm_out=genioc_cb_alsa,
+    };
+    if (!(genioc.alsa=alsa_new(&alsa_delegate))) {
+      fprintf(stderr,"Failed to initialize ALSA\n");
       return -1;
     }
   #endif

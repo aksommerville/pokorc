@@ -12,10 +12,16 @@
 #if PO_USE_x11
   #include "opt/x11/po_x11.h"
 #endif
+#if PO_USE_alsa
+  #include "opt/alsa/alsa.h"
+#endif
 
 extern struct genioc {
   #if PO_USE_x11
     struct po_x11 *x11;
+  #endif
+  #if PO_USE_alsa
+    struct alsa *alsa;
   #endif
   int terminate;
   uint8_t inputstate;
