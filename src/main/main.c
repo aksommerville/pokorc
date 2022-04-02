@@ -1,5 +1,6 @@
 #include "platform.h"
 #include "synth.h"
+#include "fakesheet.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -24,39 +25,153 @@ static struct image fb={
   .h=64,
 };
 
+static uint8_t input=0;
 static uint8_t pvinput=0;
+static uint32_t framec=0;
 
 static struct synth synth={0};
+static struct fakesheet fakesheet={0};
+static uint32_t lastsongtime=0;
+
+static uint32_t totalscore=0; // bottom line. can go both up and down
+static uint32_t combolength=0; // how many notes hit without a miss or overlook
+static uint8_t combopower=0; // minimum score of any note in the running combo
+static uint32_t totalhitc=0; // hitc+overlookc is the count of notes in the fakesheet
+static uint32_t totalmissc=0; // missc is unconstrained; how many unexpected notes played by user
+static uint32_t totaloverlookc=0;
 
 /* Synthesizer.
  */
- 
-static int16_t halfperiod=100;
-static int16_t level=10000;
-static int16_t p=0;
 
 int16_t audio_next() {
   return synth_update(&synth);
 }
 
+/* Scoring.
+ */
+ 
+#define MISS_VALUE 3
+#define OVERLOOK_VALUE 4
+ 
+static void score_hit(uint8_t col,uint8_t points) {
+  // Played a note acceptably close to an expected one. (points) in 0..10
+  //fprintf(stderr,"%s %d +%d\n",__func__,col,points);
+  
+  if (!combolength) {
+    combolength=1;
+    combopower=points;
+  } else {
+    combolength++;
+    if (points<combopower) combopower++;
+  }
+  
+  totalhitc++;
+  totalscore+=points;
+}
+
+static void score_miss(uint8_t col) {
+  // Played a note but nothing expected on that channel.
+  //fprintf(stderr,"%s %d\n",__func__,col);
+  
+  if (combolength) {
+    //fprintf(stderr,"End of %d-note combo, power=%d\n",combolength,combopower);
+    combolength=0;
+  }
+  
+  totalmissc++;
+  if (totalscore<MISS_VALUE) totalscore=0;
+  else totalscore-=MISS_VALUE;
+}
+
+static void score_overlook(uint8_t col) {
+  // Note slipped past the user unplayed.
+  //fprintf(stderr,"%s %d\n",__func__,col);
+  
+  if (combolength) {
+    //fprintf(stderr,"End of %d-note combo, power=%d\n",combolength,combopower);
+    combolength=0;
+  }
+  
+  totaloverlookc++;
+  if (totalscore<OVERLOOK_VALUE) totalscore=0;
+  else totalscore-=OVERLOOK_VALUE;
+}
+
 /* Notes XXX TEMP get this organized
  */
  
-#define NOTEC 8
+#define NOTEC 16
+
+#define PEEK_TIME_FRAMES (22050*1)
+#define DROP_TIME_FRAMES 11025
  
 static struct note {
   uint8_t col; // 0..4: both horz position and icon
   int8_t y; // 0..63 (or maybe a bit further); vertical midpoint
   uint8_t scored;
-} notev[NOTEC];
+  uint32_t time; // absolute song time in frames
+  uint8_t waveid;
+  uint8_t noteid;
+} notev[NOTEC]={0};
 
-static void init_notes() {//XXX they can init to zero in real life
+static void init_notes() {
   struct note *note=notev;
   uint8_t i=NOTEC;
   for (;i-->0;note++) {
-    note->col=rand()%5;
-    note->y=rand()%64; // don't let them be the same initially; they move at the same rate
+    note->col=0xff;
+  }
+}
+
+static void drop_all_notes() {
+  struct note *note=notev;
+  uint8_t i=NOTEC;
+  for (;i-->0;note++) {
+    note->col=0xff;
+  }
+}
+
+/* Receive new upcoming event from fakesheet.
+ */
+ 
+static void cb_fakesheet_event(uint32_t time,uint8_t channel,uint8_t waveid,uint8_t noteid) {
+  struct note *note=notev;
+  uint8_t i=NOTEC;
+  for (;i-->0;note++) {
+    if (note->col<5) continue;
+    note->col=channel;
+    note->waveid=waveid;
+    note->noteid=noteid;
+    note->time=time;
     note->scored=0;
+    return;
+  }
+}
+
+/* Replace (y) in each live note, based on the given absolute song time in frames.
+ * If a note is aged out, this drops it and scores the miss.
+ */
+ 
+static void reposition_notes(uint32_t now) {
+  struct note *note=notev;
+  uint8_t i=NOTEC;
+  for (;i-->0;note++) {
+    if (note->col>=5) continue;
+    int32_t reltime=note->time-now;
+    
+    if (reltime<-DROP_TIME_FRAMES) {
+      if (!note->scored) {
+        score_overlook(note->col);
+      }
+      note->col=5;
+      continue;
+    }
+    
+    if (reltime>=PEEK_TIME_FRAMES) {
+      note->y=-10;
+      continue;
+    }
+    
+    note->y=52-(reltime*62)/PEEK_TIME_FRAMES;
   }
 }
 
@@ -65,17 +180,16 @@ static void init_notes() {//XXX they can init to zero in real life
  */
 
 static void update_notes() {
-  //XXX TEMP no song yet, so just move everything down at 1 px/frame and replace randomly when they go offscreen.
-  struct note *note=notev;
-  uint8_t i=NOTEC;
-  for (;i-->0;note++) {
-    note->y++;
-    if (note->y>64+5) {
-      note->col=rand()%5;
-      note->y=-5; // just offscreen, mind that it must go 2 pixels onscreen to clear the frame, so it's really 3 off
-      note->scored=0;
-    }
+  
+  // Advance fakesheet to the song's time, plus our view window length. May create new notes.
+  if (synth.songtime<lastsongtime) {
+    fakesheet_reset(&fakesheet);
+    drop_all_notes();
   }
+  lastsongtime=synth.songtime;
+  fakesheet_advance(&fakesheet,synth.songtime+PEEK_TIME_FRAMES);
+  
+  reposition_notes(synth.songtime);
 }
 
 /* A key was pressed.
@@ -98,32 +212,109 @@ static void play_note(uint8_t col) {
     best=note;
     bestdistance=distance;
   }
-  //TODO fireworks or something
   
-  //TODO make the right sound
-  switch (col) {
-    case 0: synth_begin_note(&synth,wave0,0x30); break;
-    case 1: synth_begin_note(&synth,wave1,0x33); break;
-    case 2: synth_begin_note(&synth,wave2,0x37); break;
-    case 3: synth_begin_note(&synth,wave3,0x40); break;
-    case 4: synth_begin_note(&synth,wave4,0x43); break;
-  }
+  //TODO fireworks or something
   
   if (best) {
     int8_t score=DISTANCE_LIMIT-bestdistance;
-    //fprintf(stderr,"+%d\n",score);
+    synth_note_fireforget(&synth,best->waveid,best->noteid,0x10);
     best->scored=1;
+    score_hit(col,score);
   } else {
-    //fprintf(stderr,"BOTCH!\n");
+    synth_note_fireforget(&synth,0,0x30,0x10);
+    synth_note_fireforget(&synth,0,0x36,0x10);
+    score_miss(col);
   }
+}
+
+/* Render decimal integer.TODO replace color
+ */
+ 
+static void render_int(struct image *dst,int16_t dstx,int16_t dsty,int32_t n,uint8_t digitc) {
+
+  // Sign if negative only, and it does count toward (digitc).
+  if (n<0) {
+    image_blit_colorkey(dst,dstx,dsty,&bits,40,71,4,7);
+    dstx+=4;
+    digitc--;
+    n=-n; // i hope it's not INT_MIN
+  }
+  
+  uint8_t digiti=digitc;
+  for (;digiti-->0;n/=10) {
+    uint8_t digit=n%10;
+    image_blit_colorkey(dst,dstx+digiti*5,dsty,&bits,digit*4,71,4,7);
+  }
+}
+
+/* Render frame.
+ */
+ 
+static void render() {
+  
+  // Black out.
+  memset(fbstorage,0,sizeof(fbstorage));
+  
+  // 5 track backgrounds.
+  image_blit_opaque(&fb, 8,0,&bits,8,7,2,64);
+  image_blit_opaque(&fb,20,0,&bits,8,7,2,64);
+  image_blit_opaque(&fb,32,0,&bits,8,7,2,64);
+  image_blit_opaque(&fb,44,0,&bits,8,7,2,64);
+  image_blit_opaque(&fb,56,0,&bits,8,7,2,64);
+  
+  // Notes.
+  {
+    struct note *note=notev;
+    uint8_t i=NOTEC;
+    for (;i-->0;note++) {
+      if (note->col>4) continue; // Can use this as "none" indicator.
+      int16_t srcy=note->scored?31:22;
+      image_blit_colorkey(&fb,4+note->col*12,note->y-4,&bits,10+note->col*10,srcy,10,9);
+    }
+  }
+  
+  // "Now" line.
+  image_blit_colorkey(&fb,0,52,&bits,11,21,66,1);
+  
+  // 5 button indicators.
+  #define BTN(ix,tag) image_blit_colorkey(&fb,3+ix*12,56,&bits,10+ix*12,7+((input&BUTTON_##tag)?7:0),12,7);
+  BTN(0,LEFT)
+  BTN(1,UP)
+  BTN(2,RIGHT)
+  BTN(3,B)
+  BTN(4,A)
+  #undef BTN
+  
+  // Score.
+  render_int(&fb,69,3,totalscore,5);
+  
+  // Combo quality indicator.
+  image_blit_opaque(&fb,69,37,&bits,10,40,24,24);
+  int16_t combow=combolength*2;
+  if (combow>24) combow=24;
+  image_blit_opaque(&fb,69,37,&bits,34,40,combow,24);
+  if (combolength>=15) {
+    if (framec&8) {
+      //TODO blink in time with the music
+      image_blit_colorkey(&fb,69,37,&bits,58,40,24,24);
+    }
+  }
+  
+  // Frames. (note that the corners overlap, that's ok)
+  image_blit_colorkey(&fb,0,0,&bits,4,7,4,64); // left
+  image_blit_colorkey(&fb,92,0,&bits,0,7,4,64); // right
+  image_blit_colorkey(&fb,0,0,&bits,0,3,96,4); // top
+  image_blit_colorkey(&fb,0,60,&bits,0,0,96,4); // bottom
+  image_blit_colorkey(&fb,62,0,&bits,0,7,8,64); // full-height horz divider
 }
 
 /* Main loop.
  */
  
 void loop() {
+  framec++;
 
-  uint8_t input=platform_update();
+  input=platform_update();
   if (input!=pvinput) {
     #define PRESS(tag) ((input&BUTTON_##tag)&&!(pvinput&BUTTON_##tag))
          if (PRESS(LEFT)) play_note(0);
@@ -137,47 +328,78 @@ void loop() {
   
   update_notes();
   
-  // Black out.
-  memset(fbstorage,0,sizeof(fbstorage));
-  
-  // 5 track backgrounds.
-  image_blit_opaque(&fb, 8,0,&bits,7,7,2,64);
-  image_blit_opaque(&fb,20,0,&bits,7,7,2,64);
-  image_blit_opaque(&fb,32,0,&bits,7,7,2,64);
-  image_blit_opaque(&fb,44,0,&bits,7,7,2,64);
-  image_blit_opaque(&fb,56,0,&bits,7,7,2,64);
-  
-  // Notes.
-  {
-    struct note *note=notev;
-    uint8_t i=NOTEC;
-    for (;i-->0;note++) {
-      if (note->col>4) continue; // Can use this as "none" indicator.
-      int16_t srcy=note->scored?31:22;
-      image_blit_colorkey(&fb,4+note->col*12,note->y-4,&bits,9+note->col*10,srcy,10,9);
-    }
-  }
-  
-  // "Now" line.
-  image_blit_colorkey(&fb,0,52,&bits,10,21,66,1);
-  
-  // 5 button indicators.
-  #define BTN(ix,tag) image_blit_colorkey(&fb,3+ix*12,56,&bits,9+ix*12,7+((input&BUTTON_##tag)?7:0),12,7);
-  BTN(0,LEFT)
-  BTN(1,UP)
-  BTN(2,RIGHT)
-  BTN(3,B)
-  BTN(4,A)
-  #undef BTN
-  
-  // Frames. (note that the corners overlap, that's ok)
-  image_blit_colorkey(&fb,0,0,&bits,3,7,4,64); // left
-  image_blit_colorkey(&fb,92,0,&bits,0,7,4,64); // right
-  image_blit_colorkey(&fb,0,0,&bits,0,3,96,4); // top
-  image_blit_colorkey(&fb,0,60,&bits,0,0,96,4); // bottom
-  image_blit_colorkey(&fb,62,0,&bits,0,7,7,64); // full-height horz divider
-
+  render();
   platform_send_framebuffer(fb.v);
+}
+
+/* XXX TEMP try out the song player
+ */
+ 
+static const uint8_t song[]={
+#define DLY(t) (t&0x7f),
+#define FF(w,n,d) (0x80|(w&0x07)),n,d,
+#define ON(w,n) (0xe0|(w&0x07)),n,
+#define OFF(w,n) (0xc0|(w&0x07)),n,
+
+  DLY(0x60)
+  ON(1,0x30)
+  FF(0,0x24,0x10) DLY(0x10)
+  FF(0,0x27,0x10) DLY(0x10)
+  FF(0,0x2b,0x10) DLY(0x10)
+  FF(0,0x30,0x10) DLY(0x10)
+  FF(0,0x33,0x10) DLY(0x10)
+  OFF(1,0x30)
+  FF(0,0x37,0x10) DLY(0x10)
+  FF(0,0x3c,0x10) DLY(0x10)
+  FF(0,0x3f,0x10) DLY(0x10)
+  FF(0,0x43,0x10) DLY(0x10)
+  FF(0,0x48,0x10) DLY(0x10)
+  FF(0,0x4b,0x10) DLY(0x10)
+  FF(0,0x4f,0x10) DLY(0x10)
+  FF(0,0x54,0x10) DLY(0x10)
+  DLY(0x60)
+
+#undef DLY
+#undef FF
+#undef ON
+#undef OFF
+};
+
+static uint32_t TEMP_fakesheet[]={
+#define EVT(beat,channel,waveid,noteid) ((0x60+beat*0x10)<<16)|(channel<<12)|(waveid<<8)|noteid,
+/* i can't keep up:
+  EVT(  0,0,3,0x24)
+  EVT(  1,1,3,0x27)
+  EVT(  2,2,3,0x2b)
+  EVT(  3,3,3,0x30)
+  EVT(  4,4,3,0x33)
+  EVT(  5,0,3,0x37)
+  EVT(  6,1,3,0x3c)
+  EVT(  7,2,3,0x3f)
+  EVT(  8,3,3,0x43)
+  EVT(  9,4,3,0x48)
+  EVT( 10,3,3,0x4b)
+  EVT( 11,2,3,0x4f)
+  EVT( 12,1,3,0x54)
+*/
+  EVT(  0,0,3,0x24)
+  EVT(  2,1,3,0x2b)
+  EVT(  4,4,3,0x33)
+  EVT(  6,1,3,0x3c)
+  EVT(  8,3,3,0x43)
+  EVT( 10,3,3,0x4b)
+  EVT( 12,2,3,0x54)
+#undef EVT
+};
+ 
+static void TEMP_play_song() {
+
+  synth.song=song;
+  synth.songc=sizeof(song);
+  
+  fakesheet.cb_event=cb_fakesheet_event;
+  fakesheet.eventv=TEMP_fakesheet;
+  fakesheet.eventc=sizeof(TEMP_fakesheet)/sizeof(uint32_t);
 }
 
 /* Init.
@@ -185,5 +407,17 @@ void loop() {
 
 void setup() {
   platform_init();
+  
+  synth.wavev[0]=wave0;
+  synth.wavev[1]=wave1;
+  synth.wavev[2]=wave2;
+  synth.wavev[3]=wave3;
+  synth.wavev[4]=wave4;
+  synth.wavev[5]=wave5;
+  synth.wavev[6]=wave6;
+  synth.wavev[7]=wave7;
+  
+  TEMP_play_song();
+  
   init_notes();
 }

@@ -1,0 +1,22 @@
+Pocket Orchestra Song Format
+It starts with MIDI, but we convert to a more digestible format at build time to save the Tiny some effort.
+The song is a single stream of events, distinguishable by their first byte.
+We have a hard-coded tick length: 96 Hz. This is the minimum addressable unit of time.
+
+0xxxxxxx
+  DELAY: x ticks
+  
+10000www 0nnnnnnn dddddddd
+  NOTE_FIREFORGET: w waveid, n noteid, d duration ticks
+  
+11100www 0nnnnnnn
+  NOTE_ON: w waveid, n noteid
+  
+11000www 0nnnnnnn
+  NOTE_OFF: w waveid, n noteid
+  
+10100ccc
+  INPUT: ccc channel (0..4 = left,up,right,b,a)
+  Must be followed by NOTE_ON or NOTE_FIREFORGET.
+  
+All other commands are reserved and illegal.
