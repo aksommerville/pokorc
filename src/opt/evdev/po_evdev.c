@@ -1,3 +1,4 @@
+#include "po_evdev.h"
 #include <string.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -24,7 +25,7 @@
  */
  
 struct po_evdev {
-  int (*cb_button)(struct po_evdev *evdev,uint16_t btnid,int value);
+  int (*cb_button)(struct po_evdev *evdev,uint8_t btnid,int value);
   void *userdata;
   int infd;
   int rescan;
@@ -86,7 +87,7 @@ static int po_evdev_init_inotify(struct po_evdev *evdev) {
  */
  
 struct po_evdev *po_evdev_new(
-  int (*cb_button)(struct po_evdev *evdev,uint16_t btnid,int value),
+  int (*cb_button)(struct po_evdev *evdev,uint8_t btnid,int value),
   void *userdata
 ) {
   struct po_evdev *evdev=calloc(1,sizeof(struct po_evdev));
@@ -386,16 +387,14 @@ static struct po_evdev_axis *po_evdev_device_find_axis(
 }
 
 /* Hard-coded input mapping.
- * This is obviously not ideal but whatever.
+ * This is obviously not ideal but whatever. TODO make more ideal
  */
- 
-#define BUTTON_QUIT 0xff01
 
 static const struct po_evdev_button_map {
   uint16_t vendor;
   uint16_t product;
   uint16_t code;
-  uint16_t btnid;
+  uint8_t btnid;
 } po_evdev_button_mapv[]={
 
   // 'USB Gamepad ' (SNES knockoff)
@@ -452,14 +451,18 @@ static uint16_t po_evdev_map_button(uint16_t vendor,uint16_t product,uint16_t co
 /* Read device.
  */
  
-static int po_evdev_key(struct po_evdev *evdev,struct po_evdev_device *device,uint16_t btnid,int value) {
-  if (value) {
-    if (device->state&btnid) return 0;
-    device->state|=btnid;
-    value=1;
+static int po_evdev_key(struct po_evdev *evdev,struct po_evdev_device *device,uint8_t btnid,int value) {
+  if (btnid<BUTTON_NONSTANDARD) {
+    if (value) {
+      if (device->state&btnid) return 0;
+      device->state|=btnid;
+      value=1;
+    } else {
+      if (!(device->state&btnid)) return 0;
+      device->state&=~btnid;
+    }
   } else {
-    if (!(device->state&btnid)) return 0;
-    device->state&=~btnid;
+    if (!value) return 0;
   }
   return evdev->cb_button(evdev,btnid,value);
 }
@@ -563,7 +566,7 @@ static int po_evdev_event(
     case EV_KEY: switch (event->code) {
     
         // If we encounter a USB keyboard (actually not likely), we don't need to care which vendor:
-        //case KEY_ESC: po_ld_quit_requested=1; return 0;//TODO
+        case KEY_ESC: return po_evdev_key(evdev,device,BUTTON_QUIT,event->value);
         case KEY_UP: return po_evdev_key(evdev,device,BUTTON_UP,event->value);
         case KEY_DOWN: return po_evdev_key(evdev,device,BUTTON_DOWN,event->value);
         case KEY_LEFT: return po_evdev_key(evdev,device,BUTTON_LEFT,event->value);
@@ -574,10 +577,6 @@ static int po_evdev_event(
         default: {
             int btnid=po_evdev_map_button(device->vendor,device->product,event->code);
             if (!btnid) return 0;
-            if (btnid==BUTTON_QUIT) {
-              //if (event->value) po_ld_quit_requested=1;//TODO
-              return 0;
-            }
             return po_evdev_key(evdev,device,btnid,event->value);
           }
       } break;

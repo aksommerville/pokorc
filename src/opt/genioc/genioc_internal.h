@@ -15,6 +15,9 @@
 #if PO_USE_alsa
   #include "opt/alsa/alsa.h"
 #endif
+#if PO_USE_evdev
+  #include "opt/evdev/po_evdev.h"
+#endif
 
 extern struct genioc {
   #if PO_USE_x11
@@ -22,6 +25,9 @@ extern struct genioc {
   #endif
   #if PO_USE_alsa
     struct alsa *alsa;
+  #endif
+  #if PO_USE_evdev
+    struct po_evdev *evdev;
   #endif
   int terminate;
   uint8_t inputstate;

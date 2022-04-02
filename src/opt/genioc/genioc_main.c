@@ -13,6 +13,9 @@ static void genioc_quit_drivers() {
   #if PO_USE_alsa
     alsa_del(genioc.alsa);
   #endif
+  #if PO_USE_evdev
+    po_evdev_del(genioc.evdev);
+  #endif
 }
 
 /* Signal handler.
@@ -78,6 +81,23 @@ static int genioc_cb_alsa(int16_t *v,int c,struct alsa *alsa) {
 
 #endif
 
+#if PO_USE_evdev
+
+static int genioc_cb_evdev(struct po_evdev *evdev,uint8_t btnid,int value) {
+  if (btnid<BUTTON_NONSTANDARD) {
+    if (value) genioc.inputstate|=btnid;
+    else genioc.inputstate&=~btnid;
+  } else switch (btnid) {
+    case BUTTON_QUIT: genioc.terminate=1; break;
+  }
+  #if PO_USE_x11
+    po_x11_inhibit_screensaver(genioc.x11);
+  #endif
+  return 0;
+}
+
+#endif
+
 /* Init drivers.
  */
  
@@ -111,6 +131,12 @@ static int genioc_init_drivers() {
     }
   #endif
   
+  #if PO_USE_evdev
+    if (!(genioc.evdev=po_evdev_new(genioc_cb_evdev,&genioc))) {
+      fprintf(stderr,"Failed to initialize evdev. Proceeding without joystick support.\n");
+    }
+  #endif
+  
   return 0;
 }
 
@@ -127,6 +153,9 @@ uint8_t platform_init() {
 uint8_t platform_update() {
   #if PO_USE_x11
     po_x11_update(genioc.x11);
+  #endif
+  #if PO_USE_evdev
+    po_evdev_update(genioc.evdev);
   #endif
   return genioc.inputstate;
 }
