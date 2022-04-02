@@ -44,6 +44,7 @@ $(foreach T,$(TOOLS),$(eval $(call TOOL_RULES,$T)))
 define EMBED_RULES
   mid/$1/data/embed/%.c:src/data/embed/% $(TOOL_cvtraw);$$(PRECMD) $(TOOL_cvtraw) -o$$@ $$< $2
   mid/$1/data/embed/%.png.c:src/data/embed/%.png $(TOOL_cvtimg);$$(PRECMD) $(TOOL_cvtimg) -o$$@ $$< $2
+  mid/$1/data/embed/%.wave.c:src/data/embed/%.wave $(TOOL_mkwave);$$(PRECMD) $(TOOL_mkwave) -o$$@ $$< $2
 endef
 $(eval $(call EMBED_RULES,native,))
 $(eval $(call EMBED_RULES,tiny,--tiny))

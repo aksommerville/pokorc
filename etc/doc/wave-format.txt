@@ -1,0 +1,14 @@
+Pocket Orchestra Wave Format
+Our synthesizer uses precalculated single-period waves of 512 samples each.
+These are generated at compile time by the tool 'mkwave'.
+
+Input is a text file where each line is a step:
+  harmonics ...    # floats, normally in 0..1
+  fm RATE RANGE    # RATE is a low positive integer, RANGE is floating-point
+  normalize [PEAK] # Samples may exceed -1..1 before this point; scale so we fill -PEAK..PEAK (float)
+  clamp [PEAK]     # Apply hard limit at -PEAK and PEAK (float). Creates distortion.
+  smooth SAMPLEC   # Moving average low-pass, averaging over N samples (1=noop).
+  phase PHASE      # Shift temporally by PHASE (0..1). Helps to prevent reinforcement across different waves.
+  
+The initial state is a plain sine wave.
+After all steps are complete, we implicitly clamp to -1..1.

@@ -1,4 +1,5 @@
 #include "platform.h"
+#include "synth.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -7,6 +8,14 @@
  */
 
 extern struct image bits;
+extern const int16_t wave0[];
+extern const int16_t wave1[];
+extern const int16_t wave2[];
+extern const int16_t wave3[];
+extern const int16_t wave4[];
+extern const int16_t wave5[];
+extern const int16_t wave6[];
+extern const int16_t wave7[];
 
 static uint16_t fbstorage[96*64];
 static struct image fb={
@@ -17,7 +26,9 @@ static struct image fb={
 
 static uint8_t pvinput=0;
 
-/* TODO Synthesizer.
+static struct synth synth={0};
+
+/* Synthesizer.
  */
  
 static int16_t halfperiod=100;
@@ -25,11 +36,7 @@ static int16_t level=10000;
 static int16_t p=0;
 
 int16_t audio_next() {
-  if (!p--) {
-    p=halfperiod;
-    level=-level;
-  }
-  return level;
+  return synth_update(&synth);
 }
 
 /* Notes XXX TEMP get this organized
@@ -91,8 +98,17 @@ static void play_note(uint8_t col) {
     best=note;
     bestdistance=distance;
   }
-  //TODO make a sound
   //TODO fireworks or something
+  
+  //TODO make the right sound
+  switch (col) {
+    case 0: synth_begin_note(&synth,wave0,0x30); break;
+    case 1: synth_begin_note(&synth,wave1,0x33); break;
+    case 2: synth_begin_note(&synth,wave2,0x37); break;
+    case 3: synth_begin_note(&synth,wave3,0x40); break;
+    case 4: synth_begin_note(&synth,wave4,0x43); break;
+  }
+  
   if (best) {
     int8_t score=DISTANCE_LIMIT-bestdistance;
     //fprintf(stderr,"+%d\n",score);

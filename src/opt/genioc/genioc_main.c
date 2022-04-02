@@ -140,10 +140,47 @@ void platform_send_framebuffer(const void *fb) {
   #endif
 }
 
+/* XXX print my generated waves for verification
+ */
+ 
+extern const int16_t wave0[512];
+
+static void XXX_tempmain() {
+  fprintf(stderr,"wave0:\n");
+  
+  int w=128,h=50; // w 128 because it's a factor of 512 (the length of the wave). h arbitrary.
+  int stride=w+1;
+  char *image=malloc(stride*h);
+  memset(image,0x20,stride*h);
+  char *nl=image+w;
+  int i=h;
+  for (;i-->0;nl+=stride) *nl=0x0a;
+  memset(image+(h/2)*stride,'-',w);
+  
+  int samplespercol=512/w;
+  int halfh=h/2;
+  int srcp=0,dstx=0;
+  for (;dstx<w;dstx++) {
+    int sample=0;
+    for (i=samplespercol;i-->0;srcp++) sample+=wave0[srcp];
+    sample/=samplespercol;
+    int y=(sample*halfh)/32768+halfh;
+    y=h-y;
+    if (y<0) y=0;
+    else if (y>=h) y=h-1;
+    image[y*stride+dstx]='X';
+  }
+  
+  fprintf(stderr,"%.*s",(w+1)*h,image);
+  free(image);
+}
+
 /* Main.
  */
 
 int main(int argc,char **argv) {
+  //XXX_tempmain();
+  //return 0;
   if (genioc_init_drivers()<0) {
     fprintf(stderr,"Failed to initialize drivers.\n");
     return 1;
