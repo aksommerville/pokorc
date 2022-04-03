@@ -410,7 +410,7 @@ src/data/embed/inversegamma.mid TODO 1:41 instruments,input -- original
 src/data/embed/mousechief.mid TODO 1:01 head(tail ok?),instruments,input -- sitter
 src/data/embed/tinylamb.mid 0:35 instruments,input -- original
   */
-  load_song(tinylamb);
+  load_song(goatpotion);
   
   init_notes();
 }
