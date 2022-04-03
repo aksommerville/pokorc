@@ -71,6 +71,7 @@ static void synth_consume_song(struct synth *synth) {
           fprintf(stderr,"Unknown song command 0x%02x at %d/%d\n",lead,synth->songp-1,synth->songc);
           synth->song=0;
           synth->songc=0;
+          synth_silence_all(synth);
           return;
         }
     }
@@ -84,7 +85,9 @@ static void synth_consume_song(struct synth *synth) {
 int16_t synth_update(struct synth *synth) {
 
   // Update song.
-  if (synth->songdelay>0) {
+  if (synth->songhold>0) {
+    synth->songhold--;
+  } else if (synth->songdelay>0) {
     synth->songdelay--;
     synth->songtime++;
   } else if (synth->song) {

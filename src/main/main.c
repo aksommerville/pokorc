@@ -161,7 +161,7 @@ static void cb_fakesheet_event(uint32_t time,uint8_t channel,uint8_t waveid,uint
  * If a note is aged out, this drops it and scores the miss.
  */
  
-static void reposition_notes(uint32_t now) {
+static void reposition_notes(int32_t now) {
   struct note *note=notev;
   uint8_t i=NOTEC;
   for (;i-->0;note++) {
@@ -190,6 +190,11 @@ static void reposition_notes(uint32_t now) {
  */
 
 static void update_notes() {
+
+  if (!synth.song) {
+    drop_all_notes();
+    return;
+  }
   
   // Advance fakesheet to the song's time, plus our view window length. May create new notes.
   if (synth.songtime<lastsongtime) {
@@ -197,9 +202,17 @@ static void update_notes() {
     drop_all_notes();
   }
   lastsongtime=synth.songtime;
-  fakesheet_advance(&fakesheet,synth.songtime+PEEK_TIME_FRAMES);
+  if (synth.songhold) {
+    if (synth.songhold<PEEK_TIME_FRAMES) {
+      fakesheet_advance(&fakesheet,PEEK_TIME_FRAMES-synth.songhold);
+    }
+  } else {
+    fakesheet_advance(&fakesheet,synth.songtime+PEEK_TIME_FRAMES);
+  }
   
-  reposition_notes(synth.songtime);
+  if (synth.songhold<PEEK_TIME_FRAMES) {
+    reposition_notes(synth.songtime-synth.songhold);
+  }
 }
 
 /* A key was pressed.
@@ -299,7 +312,6 @@ static void render(uint32_t beatc) {
   render_int(&fb,69,3,totalscore,5);
   
   // Dancing bear. TODO
-  //image_blit_opaque(&fb,68,11,&bits,48,64,26,26);
   image_blit_colorkey(&fb,75,12,&dancer,(beatc&3)*12,0,12,24);
   
   // Combo quality indicator.
@@ -347,64 +359,10 @@ void loop() {
   platform_send_framebuffer(fb.v);
 }
 
-/* XXX TEMP try out the song player
+/* Unpack encoded song and fakesheet.
  */
- 
-static const uint8_t song[]={
-#define DLY(t) (t&0x7f),
-#define FF(w,n,d) (0x80|(w&0x07)),n,d,
-#define ON(w,n) (0xe0|(w&0x07)),n,
-#define OFF(w,n) (0xc0|(w&0x07)),n,
-
-  DLY(0x40)
-  DLY(0x40)
-  ON(1,0x30)
-  FF(0,0x24,0x10) DLY(0x10)
-  FF(0,0x27,0x10) DLY(0x10)
-  FF(0,0x2b,0x10) DLY(0x10)
-  FF(0,0x30,0x10) DLY(0x10)
-  FF(0,0x33,0x10) DLY(0x10)
-  OFF(1,0x30)
-  FF(0,0x37,0x10) DLY(0x10)
-  FF(0,0x3c,0x10) DLY(0x10)
-  FF(0,0x3f,0x10) DLY(0x10)
-  FF(0,0x43,0x10) DLY(0x10)
-  FF(0,0x48,0x10) DLY(0x10)
-  FF(0,0x4b,0x10) DLY(0x10)
-  FF(0,0x4f,0x10) DLY(0x10)
-  FF(0,0x54,0x10) DLY(0x10)
-  DLY(0x50)
-
-#undef DLY
-#undef FF
-#undef ON
-#undef OFF
-};
-
-static uint32_t TEMP_fakesheet[]={
-#define EVT(beat,channel,waveid,noteid) ((0x80+beat*0x10)<<16)|(channel<<12)|(waveid<<8)|noteid,
-  EVT(  0,0,3,0x24)
-  EVT(  2,1,3,0x2b)
-  EVT(  4,4,3,0x33)
-  EVT(  6,1,3,0x3c)
-  EVT(  8,3,3,0x43)
-  EVT( 10,3,3,0x4b)
-  EVT( 12,2,3,0x54)
-#undef EVT
-};
- 
-static void TEMP_play_song() {
-
-  synth.song=song;
-  synth.songc=sizeof(song);
-  
-  fakesheet.cb_event=cb_fakesheet_event;
-  fakesheet.eventv=TEMP_fakesheet;
-  fakesheet.eventc=sizeof(TEMP_fakesheet)/sizeof(uint32_t);
-}
 
 static void load_song(const uint8_t *src) {
-  fprintf(stderr,"%s:%d\n",__FILE__,__LINE__);
 
   // We don't record length of (src). I guess that's ok, since it's generated at build time and therefore trusted.
   const uint16_t *hdr=(uint16_t*)src;
@@ -421,12 +379,11 @@ static void load_song(const uint8_t *src) {
   
   synth.song=src+hdrlen+addlhdrlen;
   synth.songc=songlen;
+  synth.songhold=22050;
   
   fakesheet.cb_event=cb_fakesheet_event;
   fakesheet.eventv=(uint32_t*)(src+hdrlen+addlhdrlen+songlen);
   fakesheet.eventc=fakesheetlen>>2;
-  
-  fprintf(stderr,"%s:%d\n",__FILE__,__LINE__);
 }
 
 /* Init.
@@ -444,7 +401,6 @@ void setup() {
   synth.wavev[6]=wave6;
   synth.wavev[7]=wave7;
   
-  //TEMP_play_song();
   /*
 src/data/embed/carribean.mid TODO 0:45 head/tail,instruments,input -- sitter
 src/data/embed/emfeelings.mid TODO 0:50 head/tail,instruments,input -- sitter
@@ -452,7 +408,7 @@ src/data/embed/goashuffle.mid TODO 0:43 head/tail,instruments,input -- sitter
 src/data/embed/goatpotion.mid TODO 1:10 instruments,input -- original
 src/data/embed/inversegamma.mid TODO 1:41 instruments,input -- original
 src/data/embed/mousechief.mid TODO 1:01 head(tail ok?),instruments,input -- sitter
-src/data/embed/tinylamb.mid TODO 0:35 instruments,input -- original
+src/data/embed/tinylamb.mid 0:35 instruments,input -- original
   */
   load_song(tinylamb);
   

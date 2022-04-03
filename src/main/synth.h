@@ -25,6 +25,7 @@ struct synth {
   
   // Owner should populate directly.
   const int16_t *wavev[SYNTH_WAVE_COUNT];
+  uint32_t songhold; // extra delay before starting song, frames.
   
   const uint8_t *song;
   uint16_t songc;

@@ -42,7 +42,10 @@ int fiddle_cb_pcm(int16_t *v,int c,void *donttouch) {
 static int fiddle_midi_event(const struct midi_event *event) {
   if (fiddle_pcm_lock()<0) return -1;
   switch (event->opcode) {
-    case MIDI_OPCODE_PROGRAM: fiddle.wave_by_channel[event->chid&0xf]=event->a&7; return 0;
+    case MIDI_OPCODE_PROGRAM: {
+        fiddle.wave_by_channel[event->chid&0xf]=event->a&7;
+        synth_release_all(&fiddle.synth); // heavy-handed, sorry
+      } return 0;
     case MIDI_OPCODE_NOTE_ON: synth_note_on(&fiddle.synth,fiddle.wave_by_channel[event->chid&0xf],event->a); return 0;
     case MIDI_OPCODE_NOTE_OFF: synth_note_off(&fiddle.synth,fiddle.wave_by_channel[event->chid&0xf],event->a); return 0;
     case MIDI_OPCODE_SYSTEM_RESET: synth_silence_all(&fiddle.synth); return 0;

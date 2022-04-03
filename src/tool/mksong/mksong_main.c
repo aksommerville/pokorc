@@ -60,7 +60,7 @@ static int mksong_fakesheet_append(
   if (wave>7) return -1;
   if (note>0x7f) return -1;
   uint32_t raw=(time_ticks<<16)|(channel<<12)|(wave<<8)|note;
-  if (encode_raw(&mksong->song,&raw,sizeof(raw))<0) return -1; // NB byte order assumption
+  if (encode_raw(&mksong->fakesheet,&raw,sizeof(raw))<0) return -1; // NB byte order assumption
   return 0;
 }
 
@@ -103,6 +103,7 @@ static int mksong_event_note_off(struct mksong *mksong,uint8_t chid,uint8_t note
   //TODO Track notes held, and change to "fireforget" if feasible -- i bet 99% will be.
   //...mind that you update (mksong->termsongp) if it changes history.
   if (chid>=16) return 0;
+  if (mksong->input_by_channel[chid]) return 0; // Input, not making real notes.
   if (mksong_song_append_note_off(mksong,mksong->wave_by_channel[chid],noteid)<0) return -1;
   return 0;
 }
@@ -114,7 +115,6 @@ static int mksong_event_note_off(struct mksong *mksong,uint8_t chid,uint8_t note
 static int mksong_event_note_on(struct mksong *mksong,uint8_t chid,uint8_t noteid,uint8_t velocity) {
   if (chid>=16) return 0;
   mksong->termevc++;
-  if (mksong_song_append_note_on(mksong,mksong->wave_by_channel[chid],noteid)<0) return -1;
   if (mksong->input_by_channel[chid]) {
     if (mksong_fakesheet_append(
       mksong,
@@ -123,6 +123,8 @@ static int mksong_event_note_on(struct mksong *mksong,uint8_t chid,uint8_t notei
       mksong->wave_by_channel[chid],
       noteid
     )<0) return -1;
+  } else {
+    if (mksong_song_append_note_on(mksong,mksong->wave_by_channel[chid],noteid)<0) return -1;
   }
   return 0;
 }
