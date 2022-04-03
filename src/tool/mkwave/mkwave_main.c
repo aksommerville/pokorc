@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 /* Overwrite buffer with a single-period sine wave.
  */
@@ -275,12 +276,25 @@ static int mkwave(int16_t *dst,int dstc,struct tool *tool) {
   return 0;
 }
 
+/* Extra arguments.
+ */
+ 
+static int BINARY_STDOUT=0;
+
+static int cb_arg(struct tool *tool,const char *arg) {
+  if (!strcmp(arg,"STDOUT")) {
+    BINARY_STDOUT=1;
+    return 1;
+  }
+  return 0;
+}
+
 /* Main.
  */
 
 int main(int argc,char **argv) {
   struct tool tool={0};
-  if (tool_startup(&tool,argc,argv,0)<0) return 1;
+  if (tool_startup(&tool,argc,argv,cb_arg)<0) return 1;
   if (tool.terminate) return 0;
   if (tool_read_input(&tool)<0) return 1;
   
@@ -290,8 +304,15 @@ int main(int argc,char **argv) {
     return 1;
   }
   
-  if (tool_generate_c_preamble(&tool)<0) return 1;
-  if (tool_generate_c_array(&tool,"int16_t",7,0,0,wave,sizeof(wave))<0) return 1;
-  if (tool_write_output(&tool)<0) return 1;
+  if (BINARY_STDOUT) {
+    if (write(STDOUT_FILENO,wave,sizeof(wave))!=sizeof(wave)) {
+      fprintf(stderr,"%s: Failed to write binary output to stdout.\n",tool.exename);
+      return 1;
+    }
+  } else {
+    if (tool_generate_c_preamble(&tool)<0) return 1;
+    if (tool_generate_c_array(&tool,"int16_t",7,0,0,wave,sizeof(wave))<0) return 1;
+    if (tool_write_output(&tool)<0) return 1;
+  }
   return 0;
 }

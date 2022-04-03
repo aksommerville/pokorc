@@ -47,4 +47,7 @@ void synth_note_fireforget(struct synth *synth,uint8_t waveid,uint8_t noteid,uin
 void synth_note_on(struct synth *synth,uint8_t waveid,uint8_t noteid);
 void synth_note_off(struct synth *synth,uint8_t waveid,uint8_t noteid);
 
+void synth_release_all(struct synth *synth);
+void synth_silence_all(struct synth *synth);
+
 #endif

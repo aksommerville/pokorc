@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <pthread.h>
+#include <sys/poll.h>
 #include <alsa/asoundlib.h>
 
 /* Object definition.
@@ -16,6 +17,7 @@ struct alsa {
 
   snd_pcm_t *alsa;
   snd_pcm_hw_params_t *hwparams;
+  snd_rawmidi_t *rawmidi;
 
   int hwbuffersize;
   int bufc; // frames
@@ -44,6 +46,7 @@ void alsa_del(struct alsa *alsa) {
   if (alsa->hwparams) snd_pcm_hw_params_free(alsa->hwparams);
   if (alsa->alsa) snd_pcm_close(alsa->alsa);
   if (alsa->buf) free(alsa->buf);
+  if (alsa->rawmidi) snd_rawmidi_close(alsa->rawmidi);
   
   free(alsa);
 }
@@ -95,6 +98,14 @@ static void *_alsa_iothd(void *dummy) {
   return 0;
 }
 
+/* Init MIDI-in.
+ */
+ 
+static int alsa_midi_init(struct alsa *alsa) {
+  if (snd_rawmidi_open(&alsa->rawmidi,0,"virtual",0)<0) return -1;
+  return 0;
+}
+
 /* Init.
  */
  
@@ -129,6 +140,13 @@ static int _alsa_init(struct alsa *alsa) {
   if (pthread_mutex_init(&alsa->iomtx,&mattr)) return -1;
   pthread_mutexattr_destroy(&mattr);
   if (pthread_create(&alsa->iothd,0,_alsa_iothd,alsa)) return -1;
+  
+  if (alsa->delegate.cb_midi_in) {
+    if (alsa_midi_init(alsa)<0) {
+      fprintf(stderr,"Failed to initialize ALSA RawMIDI. Proceeding without MIDI input.\n");
+    }
+  }
+  
   return 0;
 }
 
@@ -188,5 +206,30 @@ int alsa_lock(struct alsa *alsa) {
 int alsa_unlock(struct alsa *alsa) {
   if (!alsa) return 0;
   if (pthread_mutex_unlock(&alsa->iomtx)) return -1;
+  return 0;
+}
+
+/* Update.
+ */
+ 
+int alsa_update(struct alsa *alsa) {
+  if (alsa->rawmidi) {
+    int fdc=snd_rawmidi_poll_descriptors_count(alsa->rawmidi);
+    if (fdc>0) {
+      struct pollfd pollfd={0};
+      int err=snd_rawmidi_poll_descriptors(alsa->rawmidi,&pollfd,1);
+      if ((err>0)&&(poll(&pollfd,1,0)>0)) {
+        char tmp[256];
+        int tmpc=snd_rawmidi_read(alsa->rawmidi,tmp,sizeof(tmp));
+        if (tmpc<=0) {
+          fprintf(stderr,"Error reading ALSA MIDI. Closing connection. tmpc=%d errno=%d %m\n",tmpc,errno);
+          snd_rawmidi_close(alsa->rawmidi);
+          alsa->rawmidi=0;
+        } else {
+          if (alsa->delegate.cb_midi_in(tmp,tmpc,alsa)<0) return -1;
+        }
+      }
+    }
+  }
   return 0;
 }

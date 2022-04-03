@@ -326,3 +326,17 @@ int midi_file_reader_advance(struct midi_file_reader *reader,int framec) {
   }
   return 0;
 }
+
+/* Check termination.
+ */
+ 
+int midi_file_reader_is_terminated(const struct midi_file_reader *reader) {
+  if (!reader) return 1;
+  if (reader->delay) return 0;
+  struct midi_track_reader *track=reader->trackv;
+  int i=reader->trackc;
+  for (;i-->0;track++) {
+    if (!track->term) return 0;
+  }
+  return 1;
+}

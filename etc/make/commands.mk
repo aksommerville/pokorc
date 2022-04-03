@@ -12,3 +12,5 @@ sdcard:$(TINY_PACKAGE);etc/tool/sdcard.sh $(TINY_PACKAGE)
 clean:;rm -rf mid out
 
 test:;echo "TODO: make $@" ; exit 1
+
+fiddle:$(TOOL_fiddle) $(TOOL_mkwave);$(TOOL_fiddle)

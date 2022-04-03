@@ -9,6 +9,7 @@
  */
 
 extern struct image bits;
+extern struct image dancer;
 extern const int16_t wave0[];
 extern const int16_t wave1[];
 extern const int16_t wave2[];
@@ -17,6 +18,13 @@ extern const int16_t wave4[];
 extern const int16_t wave5[];
 extern const int16_t wave6[];
 extern const int16_t wave7[];
+extern const uint8_t inversegamma[];
+extern const uint8_t carribean[];
+extern const uint8_t emfeelings[];
+extern const uint8_t goashuffle[];
+extern const uint8_t goatpotion[];
+extern const uint8_t mousechief[];
+extern const uint8_t tinylamb[];
 
 static uint16_t fbstorage[96*64];
 static struct image fb={
@@ -32,6 +40,8 @@ static uint32_t framec=0;
 static struct synth synth={0};
 static struct fakesheet fakesheet={0};
 static uint32_t lastsongtime=0;
+static uint32_t song_ticks_per_beat=0; // from binary
+static uint32_t song_frames_per_beat=0; // calculated here
 
 static uint32_t totalscore=0; // bottom line. can go both up and down
 static uint32_t combolength=0; // how many notes hit without a miss or overlook
@@ -250,7 +260,7 @@ static void render_int(struct image *dst,int16_t dstx,int16_t dsty,int32_t n,uin
 /* Render frame.
  */
  
-static void render() {
+static void render(uint32_t beatc) {
   
   // Black out.
   memset(fbstorage,0,sizeof(fbstorage));
@@ -288,14 +298,17 @@ static void render() {
   // Score.
   render_int(&fb,69,3,totalscore,5);
   
+  // Dancing bear. TODO
+  //image_blit_opaque(&fb,68,11,&bits,48,64,26,26);
+  image_blit_colorkey(&fb,75,12,&dancer,(beatc&3)*12,0,12,24);
+  
   // Combo quality indicator.
   image_blit_opaque(&fb,69,37,&bits,10,40,24,24);
   int16_t combow=combolength*2;
   if (combow>24) combow=24;
   image_blit_opaque(&fb,69,37,&bits,34,40,combow,24);
-  if (combolength>=15) {
-    if (framec&8) {
-      //TODO blink in time with the music
+  if (combolength>=15) { // "Captain! Sensors indicate that music is happening!"
+    if (!(beatc&1)) {
       image_blit_colorkey(&fb,69,37,&bits,58,40,24,24);
     }
   }
@@ -328,7 +341,9 @@ void loop() {
   
   update_notes();
   
-  render();
+  uint32_t beatc=synth.songtime/song_frames_per_beat;
+  
+  render(beatc);
   platform_send_framebuffer(fb.v);
 }
 
@@ -341,7 +356,8 @@ static const uint8_t song[]={
 #define ON(w,n) (0xe0|(w&0x07)),n,
 #define OFF(w,n) (0xc0|(w&0x07)),n,
 
-  DLY(0x60)
+  DLY(0x40)
+  DLY(0x40)
   ON(1,0x30)
   FF(0,0x24,0x10) DLY(0x10)
   FF(0,0x27,0x10) DLY(0x10)
@@ -357,7 +373,7 @@ static const uint8_t song[]={
   FF(0,0x4b,0x10) DLY(0x10)
   FF(0,0x4f,0x10) DLY(0x10)
   FF(0,0x54,0x10) DLY(0x10)
-  DLY(0x60)
+  DLY(0x50)
 
 #undef DLY
 #undef FF
@@ -366,22 +382,7 @@ static const uint8_t song[]={
 };
 
 static uint32_t TEMP_fakesheet[]={
-#define EVT(beat,channel,waveid,noteid) ((0x60+beat*0x10)<<16)|(channel<<12)|(waveid<<8)|noteid,
-/* i can't keep up:
-  EVT(  0,0,3,0x24)
-  EVT(  1,1,3,0x27)
-  EVT(  2,2,3,0x2b)
-  EVT(  3,3,3,0x30)
-  EVT(  4,4,3,0x33)
-  EVT(  5,0,3,0x37)
-  EVT(  6,1,3,0x3c)
-  EVT(  7,2,3,0x3f)
-  EVT(  8,3,3,0x43)
-  EVT(  9,4,3,0x48)
-  EVT( 10,3,3,0x4b)
-  EVT( 11,2,3,0x4f)
-  EVT( 12,1,3,0x54)
-*/
+#define EVT(beat,channel,waveid,noteid) ((0x80+beat*0x10)<<16)|(channel<<12)|(waveid<<8)|noteid,
   EVT(  0,0,3,0x24)
   EVT(  2,1,3,0x2b)
   EVT(  4,4,3,0x33)
@@ -402,6 +403,32 @@ static void TEMP_play_song() {
   fakesheet.eventc=sizeof(TEMP_fakesheet)/sizeof(uint32_t);
 }
 
+static void load_song(const uint8_t *src) {
+  fprintf(stderr,"%s:%d\n",__FILE__,__LINE__);
+
+  // We don't record length of (src). I guess that's ok, since it's generated at build time and therefore trusted.
+  const uint16_t *hdr=(uint16_t*)src;
+  song_frames_per_beat=hdr[0];
+  if (!song_frames_per_beat) {
+    fprintf(stderr,"%s:%d: frames/beat zero! Defaulting to 11025\n",__FILE__,__LINE__);
+  } else {
+    fprintf(stderr,"%s:%d song_frames_per_beat=%d\n",__FILE__,__LINE__,song_frames_per_beat);
+  }
+  const uint16_t hdrlen=8;
+  uint16_t addlhdrlen=hdr[1];
+  uint16_t songlen=hdr[2];
+  uint16_t fakesheetlen=hdr[3];
+  
+  synth.song=src+hdrlen+addlhdrlen;
+  synth.songc=songlen;
+  
+  fakesheet.cb_event=cb_fakesheet_event;
+  fakesheet.eventv=(uint32_t*)(src+hdrlen+addlhdrlen+songlen);
+  fakesheet.eventc=fakesheetlen>>2;
+  
+  fprintf(stderr,"%s:%d\n",__FILE__,__LINE__);
+}
+
 /* Init.
  */
 
@@ -417,7 +444,17 @@ void setup() {
   synth.wavev[6]=wave6;
   synth.wavev[7]=wave7;
   
-  TEMP_play_song();
+  //TEMP_play_song();
+  /*
+src/data/embed/carribean.mid TODO 0:45 head/tail,instruments,input -- sitter
+src/data/embed/emfeelings.mid TODO 0:50 head/tail,instruments,input -- sitter
+src/data/embed/goashuffle.mid TODO 0:43 head/tail,instruments,input -- sitter
+src/data/embed/goatpotion.mid TODO 1:10 instruments,input -- original
+src/data/embed/inversegamma.mid TODO 1:41 instruments,input -- original
+src/data/embed/mousechief.mid TODO 1:01 head(tail ok?),instruments,input -- sitter
+src/data/embed/tinylamb.mid TODO 0:35 instruments,input -- original
+  */
+  load_song(tinylamb);
   
   init_notes();
 }

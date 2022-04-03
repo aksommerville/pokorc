@@ -1,5 +1,22 @@
 Pocket Orchestra Song Format
 It starts with MIDI, but we convert to a more digestible format at build time to save the Tiny some effort.
+
+--- Combined Binary Format ---
+
+Everything is in the native byte order; binary songs are not portable.
+If you have to guess byte order: It is likely that one of the first two bytes is zero (ticks/beat, expect a low integer).
+And beyond that, the rest of the header should add up to no more than the file size.
+
+u16 frames per beat, reference rate 22050 hz -- for high-level tempo effects, eg dancer animation
+u16 addl header, bytes. Pad to 4.
+u16 song length, bytes. Pad to 4.
+u16 fakesheet length, bytes. Pad to 4. (actually, it can only be multiple of 4 anyway)
+... addl header
+... song
+... fakesheet
+
+--- Binary Song Format ---
+
 The song is a single stream of events, distinguishable by their first byte.
 We have a hard-coded tick length: 96 Hz. This is the minimum addressable unit of time.
 
@@ -15,8 +32,39 @@ We have a hard-coded tick length: 96 Hz. This is the minimum addressable unit of
 11000www 0nnnnnnn
   NOTE_OFF: w waveid, n noteid
   
-10100ccc
-  INPUT: ccc channel (0..4 = left,up,right,b,a)
-  Must be followed by NOTE_ON or NOTE_FIREFORGET.
-  
 All other commands are reserved and illegal.
+
+--- Binary Fakesheet Format ---
+
+Fakesheet goes along with the song, it has the user input cues.
+
+Stream of 32-bit integers:
+  0xffff0000 time in ticks (s/96, same as song. overflows a bit over 11 minutes)
+  0x0000f000 channel 0..4
+  0x00000f00 waveid 0..7
+  0x000000ff noteid 0..128
+  
+--- MIDI Format (Compile-Time) ---
+
+Basically use MIDI as MIDI, I'm trying not to fight the format too hard.
+
+The low three bits of Program ID select a wave 0..7.
+The next three bits select input mode:
+  0: None, just a musical note.
+  1: Left
+  2: Up
+  3: Right
+  4: B
+  5: A
+  6: Reserved
+  7: Reserved
+Higher bits of Program ID, and Bank ID, may be used for similar stuff in the future. Leave them zero.
+Beware that notes marked as Input will not play on their own -- double them if you want that.
+Since Input Mode is an intrinsic part of Program ID, it's sticky.
+Also note that Program ID is a channel property, so it does apply across tracks.
+
+I expect the normal pattern will be to have one track of input notes, with each input button on its own channel.
+That way, you separate the inputs for administrative use, and you don't need to repeat Program Change before each note.
+The cost is you need 5 available channels, probly not a big deal.
+
+!!! Do not issue Program Change on a channel with notes held. (or at least, don't change the Wave ID).

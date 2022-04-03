@@ -13,7 +13,8 @@ static void synth_consume_song(struct synth *synth) {
   
     // Stop processing at end of song for at least one frame, as a safety measure.
     if (synth->songp>=synth->songc) {
-      if (1) {//repeat
+      synth_release_all(synth);
+      if (0) {//repeat
         synth->songp=0;
         synth->songtime=0;
       } else {
@@ -64,9 +65,6 @@ static void synth_consume_song(struct synth *synth) {
           REQUIRE(1)
           uint8_t b1=synth->song[synth->songp++];
           synth_note_off(synth,lead&0x07,b1&0x7f);
-        } break;
-    
-      case 0xa0: { // INPUT XXX We needed to know about input notes before this point. Maybe put them in a separate stream?
         } break;
     
       default: {
@@ -211,4 +209,22 @@ void synth_note_off(struct synth *synth,uint8_t waveid,uint8_t noteid) {
     synth_end_note(synth,voice);
     return;
   }
+}
+
+/* Two flavors of "shut up".
+ */
+ 
+void synth_release_all(struct synth *synth) {
+  struct synth_voice *voice=synth->voicev;
+  uint8_t i=synth->voicec;
+  for (;i-->0;voice++) {
+    if (voice->ttl>SYNTH_RELEASE_TIME) {
+      voice->ttl=SYNTH_RELEASE_TIME;
+    }
+    voice->waveid=voice->noteid=0xff;
+  }
+}
+
+void synth_silence_all(struct synth *synth) {
+  synth->voicec=0;
 }

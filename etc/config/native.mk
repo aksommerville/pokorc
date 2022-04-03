@@ -9,6 +9,7 @@ ifeq ($(PO_NATIVE_PLATFORM),linux) #--------------------------------------------
   LD_NATIVE:=gcc
   LDPOST_NATIVE:=-lm -lz -lasound -lX11 -lpthread
   OPT_ENABLE_NATIVE:=genioc alsa x11 evdev
+  OPT_ENABLE_TOOL:=alsa ossmidi inotify
   EXE_NATIVE:=out/native/pokorc
 
 else ifeq ($(PO_NATIVE_PLATFORM),macos) #------------------------------------------

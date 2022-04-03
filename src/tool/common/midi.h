@@ -137,4 +137,9 @@ int midi_file_reader_update(struct midi_event *event,struct midi_file_reader *re
  */
 int midi_file_reader_advance(struct midi_file_reader *reader,int framec);
 
+/* Nonzero if we're at EOF.
+ * Use this to distinguish "done" from "error", after midi_file_reader_update() returns <0.
+ */
+int midi_file_reader_is_terminated(const struct midi_file_reader *reader);
+
 #endif
