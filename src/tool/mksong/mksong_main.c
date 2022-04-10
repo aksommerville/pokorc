@@ -100,11 +100,52 @@ static int mksong_event_program_change(struct mksong *mksong,uint8_t chid,uint8_
  */
  
 static int mksong_event_note_off(struct mksong *mksong,uint8_t chid,uint8_t noteid,uint8_t velocity) {
-  //TODO Track notes held, and change to "fireforget" if feasible -- i bet 99% will be.
-  //...mind that you update (mksong->termsongp) if it changes history.
   if (chid>=16) return 0;
-  if (mksong->input_by_channel[chid]) return 0; // Input, not making real notes.
-  if (mksong_song_append_note_off(mksong,mksong->wave_by_channel[chid],noteid)<0) return -1;
+  struct mksong_hold *hold=mksong->holdv;
+  int i=MKSONG_HOLD_LIMIT;
+  for (;i-->0;hold++) {
+    if (hold->chid!=chid) continue;
+    if (hold->noteid!=noteid) continue;
+    
+    if (hold->input) {
+      // Releasing an input note. We don't record the end of inputs. Do nothing but clear the hold.
+      memset(hold,0,sizeof(struct mksong_hold));
+      return 0;
+    }
+    // Releasing a playback note.
+    //TODO Capture hold time, and convert to fireforget if we can. Remember to update (mksong->termsongp) if so.
+    if (mksong_song_append_note_off(mksong,hold->waveid,noteid)<0) return -1;
+    memset(hold,0,sizeof(struct mksong_hold));
+    return 0;
+  }
+  // Note was not present. Whatever, do nothing.
+  return 0;
+}
+
+/* Add hold. Fails if there isn't space.
+ */
+ 
+static int mksong_hold_add(struct mksong *mksong,uint8_t chid,uint8_t noteid) {
+  struct mksong_hold *available=0,*hold=mksong->holdv;
+  int i=MKSONG_HOLD_LIMIT;
+  for (;i-->0;hold++) {
+    if ((hold->chid==chid)&&(hold->noteid==noteid)) {
+      fprintf(stderr,"%s:ERROR: Repeated note %d on channel %d\n",TOOL->srcpath,noteid,chid);
+      return -1;
+    }
+    if (!available&&!hold->noteid) available=hold;
+  }
+  if (!available) {
+    fprintf(stderr,
+      "%s:ERROR: Too many simultaneous notes, limit %d. Around note %d on channel %d.\n",
+      TOOL->srcpath,MKSONG_HOLD_LIMIT,noteid,chid
+    );
+    return -1;
+  }
+  available->chid=chid;
+  available->noteid=noteid;
+  available->waveid=mksong->wave_by_channel[chid];
+  available->input=mksong->input_by_channel[chid];
   return 0;
 }
 
@@ -114,6 +155,8 @@ static int mksong_event_note_off(struct mksong *mksong,uint8_t chid,uint8_t note
  
 static int mksong_event_note_on(struct mksong *mksong,uint8_t chid,uint8_t noteid,uint8_t velocity) {
   if (chid>=16) return 0;
+  if (!noteid) return 0; // We depend on noteid being nonzero. I don't believe zero is useful as a MIDI note anyway.
+  if (mksong_hold_add(mksong,chid,noteid)<0) return -1;
   mksong->termevc++;
   if (mksong->input_by_channel[chid]) {
     if (mksong_fakesheet_append(

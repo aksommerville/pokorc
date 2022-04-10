@@ -104,6 +104,7 @@ int16_t synth_update(struct synth *synth) {
       voice->ttl--;
       int32_t sample1=voice->v[voice->p>>SYNTH_P_SHIFT];
       if (voice->ttl<SYNTH_RELEASE_TIME) {
+        if (!voice->ttl) voice->waveid=voice->noteid=0xff;
         sample1*=((voice->ttl*0x400)/SYNTH_RELEASE_TIME);
       } else {
         sample1<<=10;
@@ -212,6 +213,7 @@ void synth_note_off(struct synth *synth,uint8_t waveid,uint8_t noteid) {
     synth_end_note(synth,voice);
     return;
   }
+  fprintf(stderr,"***** WARNING %s %d,%d, voice not found\n",__func__,waveid,noteid);
 }
 
 /* Two flavors of "shut up".

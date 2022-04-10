@@ -14,3 +14,4 @@ clean:;rm -rf mid out
 test:;echo "TODO: make $@" ; exit 1
 
 fiddle:$(TOOL_fiddle) $(TOOL_mkwave);$(TOOL_fiddle)
+songedit:;http-server src/songedit

@@ -41,7 +41,7 @@ static struct synth synth={0};
 static struct fakesheet fakesheet={0};
 static uint32_t lastsongtime=0;
 static uint32_t song_ticks_per_beat=0; // from binary
-static uint32_t song_frames_per_beat=0; // calculated here
+static uint32_t song_frames_per_beat=11025; // calculated here
 
 static uint32_t totalscore=0; // bottom line. can go both up and down
 static uint32_t combolength=0; // how many notes hit without a miss or overlook
@@ -49,6 +49,11 @@ static uint8_t combopower=0; // minimum score of any note in the running combo
 static uint32_t totalhitc=0; // hitc+overlookc is the count of notes in the fakesheet
 static uint32_t totalmissc=0; // missc is unconstrained; how many unexpected notes played by user
 static uint32_t totaloverlookc=0;
+
+static struct {
+  uint8_t waveid;
+  uint8_t noteid;
+} notes_by_input[5]={0};
 
 /* Synthesizer.
  */
@@ -222,6 +227,7 @@ static void update_notes() {
 #define DISTANCE_LIMIT 10 /* pixels */
 
 static void play_note(uint8_t col) {
+  if (col>=5) return;
   struct note *best=0;
   struct note *note=notev;
   uint8_t bestdistance=DISTANCE_LIMIT;
@@ -240,13 +246,24 @@ static void play_note(uint8_t col) {
   
   if (best) {
     int8_t score=DISTANCE_LIMIT-bestdistance;
-    synth_note_fireforget(&synth,best->waveid,best->noteid,0x10);
+    notes_by_input[col].waveid=best->waveid;
+    notes_by_input[col].noteid=best->noteid;
+    synth_note_on(&synth,best->waveid,best->noteid);
     best->scored=1;
     score_hit(col,score);
   } else {
     synth_note_fireforget(&synth,0,0x30,0x10);
     synth_note_fireforget(&synth,0,0x36,0x10);
     score_miss(col);
+  }
+}
+
+static void drop_note(uint8_t col) {
+  if (col>=5) return;
+  if (notes_by_input[col].noteid) {
+    synth_note_off(&synth,notes_by_input[col].waveid,notes_by_input[col].noteid);
+    notes_by_input[col].waveid=0;
+    notes_by_input[col].noteid=0;
   }
 }
 
@@ -341,13 +358,20 @@ void loop() {
 
   input=platform_update();
   if (input!=pvinput) {
+    #define RELEASE(tag) (!(input&BUTTON_##tag)&&(pvinput&BUTTON_##tag))
+    if (RELEASE(LEFT)) drop_note(0);
+    if (RELEASE(UP)) drop_note(1);
+    if (RELEASE(RIGHT)) drop_note(2);
+    if (RELEASE(B)) drop_note(3);
+    if (RELEASE(A)) drop_note(4);
+    #undef RELEASE
     #define PRESS(tag) ((input&BUTTON_##tag)&&!(pvinput&BUTTON_##tag))
-         if (PRESS(LEFT)) play_note(0);
-    else if (PRESS(UP)) play_note(1);
-    else if (PRESS(RIGHT)) play_note(2);
-    else if (PRESS(B)) play_note(3);
-    else if (PRESS(A)) play_note(4);
-    #undef DOWN
+    if (PRESS(LEFT)) play_note(0);
+    if (PRESS(UP)) play_note(1);
+    if (PRESS(RIGHT)) play_note(2);
+    if (PRESS(B)) play_note(3);
+    if (PRESS(A)) play_note(4);
+    #undef RELEASE
     pvinput=input;
   }
   
@@ -361,7 +385,7 @@ void loop() {
 
 /* Unpack encoded song and fakesheet.
  */
-
+ 
 static void load_song(const uint8_t *src) {
 
   // We don't record length of (src). I guess that's ok, since it's generated at build time and therefore trusted.
@@ -369,6 +393,7 @@ static void load_song(const uint8_t *src) {
   song_frames_per_beat=hdr[0];
   if (!song_frames_per_beat) {
     fprintf(stderr,"%s:%d: frames/beat zero! Defaulting to 11025\n",__FILE__,__LINE__);
+    song_frames_per_beat=11025;
   } else {
     fprintf(stderr,"%s:%d song_frames_per_beat=%d\n",__FILE__,__LINE__,song_frames_per_beat);
   }
@@ -382,8 +407,8 @@ static void load_song(const uint8_t *src) {
   synth.songhold=22050;
   
   fakesheet.cb_event=cb_fakesheet_event;
-  fakesheet.eventv=(uint32_t*)(src+hdrlen+addlhdrlen+songlen);
-  fakesheet.eventc=fakesheetlen>>2;
+  fakesheet.eventv=src+hdrlen+addlhdrlen+songlen;
+  fakesheet.eventc=fakesheetlen;
 }
 
 /* Init.
@@ -405,12 +430,12 @@ void setup() {
 src/data/embed/carribean.mid TODO 0:45 head/tail,instruments,input -- sitter
 src/data/embed/emfeelings.mid TODO 0:50 head/tail,instruments,input -- sitter
 src/data/embed/goashuffle.mid TODO 0:43 head/tail,instruments,input -- sitter
-src/data/embed/goatpotion.mid TODO 1:10 instruments,input -- original
+src/data/embed/goatpotion.mid 1:10 -- original
 src/data/embed/inversegamma.mid TODO 1:41 instruments,input -- original
 src/data/embed/mousechief.mid TODO 1:01 head(tail ok?),instruments,input -- sitter
-src/data/embed/tinylamb.mid 0:35 instruments,input -- original
+src/data/embed/tinylamb.mid 0:35 -- original
   */
-  load_song(goatpotion);
+  load_song(inversegamma);
   
   init_notes();
 }

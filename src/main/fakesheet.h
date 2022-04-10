@@ -19,8 +19,8 @@
 struct fakesheet {
 
   // Constant, owner should set:
-  const uint32_t *eventv;
-  uint16_t eventc;
+  const uint8_t *eventv;
+  uint16_t eventc; // in bytes, ie event count times 4 (the same way it's stored)
   void (*cb_event)(uint32_t time_frames,uint8_t channel,uint8_t wave,uint8_t note);
   
   // Transient state managed by fakesheet:

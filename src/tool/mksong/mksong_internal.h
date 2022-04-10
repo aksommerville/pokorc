@@ -15,6 +15,9 @@
 #define MKSONG_FRAMES_PER_TICK 256
 #define MIDI_READ_RATE (96*MKSONG_FRAMES_PER_TICK)
 
+// Same as SYNTH_VOICE_LIMIT. We'll fail during conversion if the song tries to hold more voices than this.
+#define MKSONG_HOLD_LIMIT 8
+
 struct mksong {
   struct tool hdr;
   struct midi_file_reader *reader;
@@ -28,6 +31,14 @@ struct mksong {
   // Both derived from Program ID:
   uint8_t input_by_channel[16];
   uint8_t wave_by_channel[16];
+  
+  struct mksong_hold {
+    uint8_t chid;
+    uint8_t waveid;
+    uint8_t noteid;
+    uint8_t input; // 0..5
+  } holdv[MKSONG_HOLD_LIMIT];
+  // No count of holds; just read the whole list every time
   
   // Workaround for the Logic bug.
   int termsongp,termtime,termevc;
