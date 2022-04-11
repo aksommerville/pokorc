@@ -236,7 +236,16 @@ int main(int argc,char **argv) {
     nexttime+=frametime;
     framec++;
     
+    #if PO_USE_alsa
+      if (alsa_lock(genioc.alsa)<0) {
+        fprintf(stderr,"ERROR! Failed to acquire ALSA lock.\n");
+        return 1;
+      }
+    #endif
     loop();
+    #if PO_USE_alsa
+      alsa_unlock(genioc.alsa);
+    #endif
   }
   
   if (framec>0) {

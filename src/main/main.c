@@ -444,10 +444,33 @@ static void render(uint32_t beatc) {
 /* Main loop.
  */
  
+#if 0 // Input automation! Hacked this in to track down a bug, but leaving since I bet we'll need it again.
+static uint8_t xxx_input_automation[]={
+  0,//no delay on the first event
+  60,BUTTON_A,
+  13,0,
+  255,//required final delay
+};
+static uint16_t xxx_input_automationp=0;
+static uint8_t xxx_input_automation_delay=0;
+static uint8_t xxx_input_override=0;
+#endif
+ 
 void loop() {
   framec++;
 
   input=platform_update();
+  
+  #if 0 // Input automation
+  if (xxx_input_automation_delay) {
+    xxx_input_automation_delay--;
+    input=xxx_input_override;
+  } else if (xxx_input_automationp<sizeof(xxx_input_automation)) {
+    xxx_input_override=xxx_input_automation[xxx_input_automationp++];
+    xxx_input_automation_delay=xxx_input_automation[xxx_input_automationp++];
+  }
+  #endif
+  
   if (input!=pvinput) {
     #define RELEASE(tag) (!(input&BUTTON_##tag)&&(pvinput&BUTTON_##tag))
     if (RELEASE(LEFT)) drop_note(0);
@@ -526,7 +549,7 @@ src/data/embed/inversegamma.mid TODO 1:41 instruments,input -- original
 src/data/embed/mousechief.mid TODO 1:01 head(tail ok?),instruments,input -- sitter
 src/data/embed/tinylamb.mid 0:35 -- original
   */
-  load_song(inversegamma);
+  load_song(tinylamb);
   
   init_notes();
 }
