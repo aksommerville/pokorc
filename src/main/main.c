@@ -55,6 +55,17 @@ static struct {
   uint8_t noteid;
 } notes_by_input[5]={0};
 
+#define TOAST_LIMIT 16
+static struct toast {
+  uint8_t type;
+  uint8_t col;
+  int8_t score;
+  uint8_t ttl;
+} toastv[TOAST_LIMIT];
+#define TOAST_TYPE_NONE 0
+#define TOAST_TYPE_POINTS 1
+#define TOAST_TYPE_X 2
+
 /* Synthesizer.
  */
 
@@ -68,7 +79,7 @@ int16_t audio_next() {
 #define MISS_VALUE 3
 #define OVERLOOK_VALUE 4
  
-static void score_hit(uint8_t col,uint8_t points) {
+static uint8_t score_hit(uint8_t col,uint8_t points) {
   // Played a note acceptably close to an expected one. (points) in 0..10
   //fprintf(stderr,"%s %d +%d\n",__func__,col,points);
   
@@ -80,8 +91,13 @@ static void score_hit(uint8_t col,uint8_t points) {
     if (points<combopower) combopower++;
   }
   
+  if (combolength>=20) points*=3;
+  else if (combolength>=15) points*=2;
+  
   totalhitc++;
   totalscore+=points;
+  
+  return points;
 }
 
 static void score_miss(uint8_t col) {
@@ -220,6 +236,45 @@ static void update_notes() {
   }
 }
 
+/* Add toasts attached to one input channel.
+ */
+ 
+static void add_score_toast(uint8_t col,uint8_t points) {
+  struct toast *toast=toastv;
+  uint8_t i=TOAST_LIMIT;
+  for (;i-->0;toast++) {
+    if (toast->type) continue;
+    toast->type=TOAST_TYPE_POINTS;
+    toast->col=col;
+    toast->score=points;
+    toast->ttl=30;
+    return;
+  }
+}
+
+static void add_miss_toast(uint8_t col) {
+  struct toast *toast=toastv;
+  uint8_t i=TOAST_LIMIT;
+  for (;i-->0;toast++) {
+    if (toast->type) continue;
+    toast->type=TOAST_TYPE_X;
+    toast->col=col;
+    toast->score=0;
+    toast->ttl=30;
+    return;
+  }
+}
+
+static void update_toasts() {
+  struct toast *toast=toastv;
+  uint8_t i=TOAST_LIMIT;
+  for (;i-->0;toast++) {
+    if (!toast->type) continue;
+    if (toast->ttl) toast->ttl--;
+    else toast->type=0;
+  }
+}
+
 /* A key was pressed.
  * Find the nearest unscored note in that column and score it, or register a botch.
  */
@@ -242,19 +297,19 @@ static void play_note(uint8_t col) {
     bestdistance=distance;
   }
   
-  //TODO fireworks or something
-  
   if (best) {
     int8_t score=DISTANCE_LIMIT-bestdistance;
     notes_by_input[col].waveid=best->waveid;
     notes_by_input[col].noteid=best->noteid;
     synth_note_on(&synth,best->waveid,best->noteid);
     best->scored=1;
-    score_hit(col,score);
+    uint8_t points=score_hit(col,score);
+    add_score_toast(col,points);
   } else {
     synth_note_fireforget(&synth,0,0x30,0x10);
     synth_note_fireforget(&synth,0,0x36,0x10);
     score_miss(col);
+    add_miss_toast(col);
   }
 }
 
@@ -271,6 +326,17 @@ static void drop_note(uint8_t col) {
  */
  
 static void render_int(struct image *dst,int16_t dstx,int16_t dsty,int32_t n,uint8_t digitc) {
+  if (!digitc) {
+    if (n>=10000) digitc=5;
+    else if (n>=1000) digitc=4;
+    else if (n>=100) digitc=3;
+    else if (n>=10) digitc=2;
+    else if (n>=0) digitc=1;
+    else if (n>-10) digitc=2;
+    else if (n>-100) digitc=3;
+    else if (n>-1000) digitc=4;
+    else digitc=5;
+  }
 
   // Sign if negative only, and it does count toward (digitc).
   if (n<0) {
@@ -325,11 +391,36 @@ static void render(uint32_t beatc) {
   BTN(4,A)
   #undef BTN
   
+  // Fireworks.
+  {
+    struct toast *toast=toastv;
+    uint8_t i=TOAST_LIMIT;
+    for (;i-->0;toast++) switch (toast->type) {
+      case TOAST_TYPE_POINTS: {
+          render_int(&fb,3+toast->col*12,30+(toast->ttl>>1),toast->score,0);
+        } break;
+      case TOAST_TYPE_X: {
+          image_blit_colorkey(&fb,3+toast->col*12,30+(toast->ttl>>1),&bits,0,85,11,11);
+        } break;
+    }
+  }
+  
   // Score.
   render_int(&fb,69,3,totalscore,5);
   
   // Dancing bear. TODO
-  image_blit_colorkey(&fb,75,12,&dancer,(beatc&3)*12,0,12,24);
+  //image_blit_colorkey(&fb,75,12,&dancer,(beatc&3)*12,0,12,24);
+  uint32_t subtiming=synth.songtime%song_frames_per_beat;
+  uint8_t frame=(subtiming*4)/song_frames_per_beat;
+  int16_t srcx;
+  //switch (beatc%4) {
+  switch (frame) {
+    case 0: srcx=12*0; break;
+    case 1: srcx=12*4; break;
+    case 2: srcx=12*0; break;
+    case 3: srcx=12*5; break;
+  }
+  image_blit_colorkey(&fb,75,12,&dancer,srcx,0,12,24);
   
   // Combo quality indicator.
   image_blit_opaque(&fb,69,37,&bits,10,40,24,24);
@@ -376,6 +467,7 @@ void loop() {
   }
   
   update_notes();
+  update_toasts();
   
   uint32_t beatc=synth.songtime/song_frames_per_beat;
   
@@ -428,7 +520,6 @@ void setup() {
   
   /*
 src/data/embed/carribean.mid TODO 0:45 head/tail,instruments,input -- sitter
-src/data/embed/emfeelings.mid TODO 0:50 head/tail,instruments,input -- sitter
 src/data/embed/goashuffle.mid TODO 0:43 head/tail,instruments,input -- sitter
 src/data/embed/goatpotion.mid 1:10 -- original
 src/data/embed/inversegamma.mid TODO 1:41 instruments,input -- original
