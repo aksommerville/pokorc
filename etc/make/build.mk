@@ -52,6 +52,7 @@ define EMBED_RULES
   mid/$1/data/embed/%.png.c:src/data/embed/%.png $(TOOL_cvtimg);$$(PRECMD) $(TOOL_cvtimg) -o$$@ $$< $2
   mid/$1/data/embed/%.wave.c:src/data/embed/%.wave $(TOOL_mkwave);$$(PRECMD) $(TOOL_mkwave) -o$$@ $$< $2
   mid/$1/data/embed/%.mid.c:src/data/embed/%.mid $(TOOL_mksong);$$(PRECMD) $(TOOL_mksong) -o$$@ $$< $2
+  mid/$1/data/embed/font.png.c:src/data/embed/font.png $(TOOL_mkfont);$$(PRECMD) $(TOOL_mkfont) -o$$@ $$< $2
 endef
 $(eval $(call EMBED_RULES,native,))
 $(eval $(call EMBED_RULES,tiny,--tiny))

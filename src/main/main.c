@@ -1,30 +1,14 @@
 #include "platform.h"
 #include "synth.h"
 #include "fakesheet.h"
+#include "data.h"
+#include "menu.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 /* Globals.
  */
-
-extern struct image bits;
-extern struct image dancer;
-extern const int16_t wave0[];
-extern const int16_t wave1[];
-extern const int16_t wave2[];
-extern const int16_t wave3[];
-extern const int16_t wave4[];
-extern const int16_t wave5[];
-extern const int16_t wave6[];
-extern const int16_t wave7[];
-extern const uint8_t inversegamma[];
-extern const uint8_t carribean[];
-extern const uint8_t emfeelings[];
-extern const uint8_t goashuffle[];
-extern const uint8_t goatpotion[];
-extern const uint8_t mousechief[];
-extern const uint8_t tinylamb[];
 
 static uint16_t fbstorage[96*64];
 static struct image fb={
@@ -36,6 +20,9 @@ static struct image fb={
 static uint8_t input=0;
 static uint8_t pvinput=0;
 static uint32_t framec=0;
+
+// If null, we are in the menu.
+static const struct songinfo *songinfo=0;
 
 static struct synth synth={0};
 static struct fakesheet fakesheet={0};
@@ -441,6 +428,65 @@ static void render(uint32_t beatc) {
   image_blit_colorkey(&fb,62,0,&bits,0,7,8,64); // full-height horz divider
 }
 
+/* Game: Begin (TODO move out of main.c)
+ */
+ 
+static void game_begin(const struct songinfo *songinfo) {
+
+  // We don't record length of (src). I guess that's ok, since it's generated at build time and therefore trusted.
+  const uint8_t *hdr=songinfo->song;
+  song_frames_per_beat=hdr[0]|(hdr[1]<<8);
+  if (!song_frames_per_beat) {
+    fprintf(stderr,"%s:%d:%s: frames/beat zero! Defaulting to 11025\n",__FILE__,__LINE__,songinfo->name);
+    song_frames_per_beat=11025;
+  } else {
+    fprintf(stderr,"%s:%d:%s: song_frames_per_beat=%d\n",__FILE__,__LINE__,songinfo->name,song_frames_per_beat);
+  }
+  const uint16_t hdrlen=8;
+  uint16_t addlhdrlen=hdr[2]|(hdr[3]<<8);
+  uint16_t songlen=hdr[4]|(hdr[5]<<8);
+  uint16_t fakesheetlen=hdr[6]|(hdr[7]<<8);
+  
+  synth.song=songinfo->song+hdrlen+addlhdrlen;
+  synth.songc=songlen;
+  synth.songhold=22050;
+  
+  fakesheet.cb_event=cb_fakesheet_event;
+  fakesheet.eventv=songinfo->song+hdrlen+addlhdrlen+songlen;
+  fakesheet.eventc=fakesheetlen;
+}
+
+/* Game: Receive input. (TODO move out of main.c)
+ */
+ 
+static void game_input(uint8_t input,uint8_t pvinput) {
+  #define BTN(tag,col) \
+    if ((input&BUTTON_##tag)&&!(pvinput&BUTTON_##tag)) play_note(col); \
+    else if (!(input&BUTTON_##tag)&&(pvinput&BUTTON_##tag)) drop_note(col);
+  BTN(LEFT,0)
+  BTN(UP,1)
+  BTN(RIGHT,2)
+  BTN(B,3)
+  BTN(A,4)
+  #undef BTN
+  /*
+  #define PRESS(tag) ((input&BUTTON_##tag)&&!(pvinput&BUTTON_##tag))
+  #define RELEASE(tag) (!(input&BUTTON_##tag)&&(pvinput&BUTTON_##tag))
+  if (RELEASE(LEFT)) drop_note(0);
+  if (RELEASE(UP)) drop_note(1);
+  if (RELEASE(RIGHT)) drop_note(2);
+  if (RELEASE(B)) drop_note(3);
+  if (RELEASE(A)) drop_note(4);
+  if (PRESS(LEFT)) play_note(0);
+  if (PRESS(UP)) play_note(1);
+  if (PRESS(RIGHT)) play_note(2);
+  if (PRESS(B)) play_note(3);
+  if (PRESS(A)) play_note(4);
+  #undef PRESS
+  #undef RELEASE
+  */
+}
+
 /* Main loop.
  */
  
@@ -472,58 +518,28 @@ void loop() {
   #endif
   
   if (input!=pvinput) {
-    #define RELEASE(tag) (!(input&BUTTON_##tag)&&(pvinput&BUTTON_##tag))
-    if (RELEASE(LEFT)) drop_note(0);
-    if (RELEASE(UP)) drop_note(1);
-    if (RELEASE(RIGHT)) drop_note(2);
-    if (RELEASE(B)) drop_note(3);
-    if (RELEASE(A)) drop_note(4);
-    #undef RELEASE
-    #define PRESS(tag) ((input&BUTTON_##tag)&&!(pvinput&BUTTON_##tag))
-    if (PRESS(LEFT)) play_note(0);
-    if (PRESS(UP)) play_note(1);
-    if (PRESS(RIGHT)) play_note(2);
-    if (PRESS(B)) play_note(3);
-    if (PRESS(A)) play_note(4);
+    if (songinfo) {
+      game_input(input,pvinput);
+    } else {
+      songinfo=menu_input(input,pvinput);
+      if (songinfo) game_begin(songinfo);
+    }
+    #undef PRESS
     #undef RELEASE
     pvinput=input;
   }
   
-  update_notes();
-  update_toasts();
-  
-  uint32_t beatc=synth.songtime/song_frames_per_beat;
-  
-  render(beatc);
-  platform_send_framebuffer(fb.v);
-}
-
-/* Unpack encoded song and fakesheet.
- */
- 
-static void load_song(const uint8_t *src) {
-
-  // We don't record length of (src). I guess that's ok, since it's generated at build time and therefore trusted.
-  const uint16_t *hdr=(uint16_t*)src;
-  song_frames_per_beat=hdr[0];
-  if (!song_frames_per_beat) {
-    fprintf(stderr,"%s:%d: frames/beat zero! Defaulting to 11025\n",__FILE__,__LINE__);
-    song_frames_per_beat=11025;
+  if (songinfo) {
+    //TODO move game stuff out of main
+    update_notes();
+    update_toasts();
+    uint32_t beatc=synth.songtime/song_frames_per_beat;
+    render(beatc);
   } else {
-    fprintf(stderr,"%s:%d song_frames_per_beat=%d\n",__FILE__,__LINE__,song_frames_per_beat);
+    menu_update(&fb);
   }
-  const uint16_t hdrlen=8;
-  uint16_t addlhdrlen=hdr[1];
-  uint16_t songlen=hdr[2];
-  uint16_t fakesheetlen=hdr[3];
   
-  synth.song=src+hdrlen+addlhdrlen;
-  synth.songc=songlen;
-  synth.songhold=22050;
-  
-  fakesheet.cb_event=cb_fakesheet_event;
-  fakesheet.eventv=src+hdrlen+addlhdrlen+songlen;
-  fakesheet.eventc=fakesheetlen;
+  platform_send_framebuffer(fb.v);
 }
 
 /* Init.
@@ -549,7 +565,9 @@ src/data/embed/inversegamma.mid TODO 1:41 instruments,input -- original
 src/data/embed/mousechief.mid TODO 1:01 head(tail ok?),instruments,input -- sitter
 src/data/embed/tinylamb.mid 0:35 -- original
   */
-  load_song(tinylamb);
+  //load_song(tinylamb);
+  
+  menu_init();
   
   init_notes();
 }

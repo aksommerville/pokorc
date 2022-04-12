@@ -49,6 +49,22 @@ void image_blit_colorkey(
   int16_t w,int16_t h
 );
 
+/* See etc/doc/font.txt for details about the format.
+ * Blit one glyph, top-left corner at (dstx,dsty).
+ * Return the total horizontal advancement, including the one pixel space.
+ * Space rows by 9 pixels.
+ */
+uint8_t image_blit_glyph(
+  struct image *dst,int16_t dstx,int16_t dsty,
+  uint32_t glyph,uint16_t color
+);
+
+uint16_t image_blit_string(
+  struct image *dst,int16_t dstx,int16_t dsty,
+  const char *src,int8_t srcc,uint16_t color,
+  const uint32_t *font /*96*/
+);
+
 #ifdef __cplusplus
   }
 #endif

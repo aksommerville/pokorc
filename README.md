@@ -2,11 +2,13 @@
 
 ## TODO
 
-- [ ] Song select, intro splash
+- [x] Song select, intro splash
 - [ ] Game over splash
 - [ ] Customizable dancer
 - - [ ] React to combo
 - [ ] Finalize scoring
+- - There's three levels of combo multiplier. The second and third are too close together.
+- - [ ] Extra fireworks when you reach the next multiplier.
 - [x] Fireworks
 - [ ] Persist high scores
 - [ ] MacOS drivers
@@ -26,3 +28,7 @@
 - - Not reliably reproducible.
 - - I had forgotten to lock ALSA from genioc during loop().
 - - [x] Play ten times with the lock, if you don't get stuck call it fixed.
+
+- 2022-04-11T20:37 tinylamb crashes the Tiny.
+- - This happened before and I fixed it by reading the song as uint8_t instead of uint32_t
+- - [x] Made the same change reading song header (uint8_t rather than uint16_t). I guess that fixed it?

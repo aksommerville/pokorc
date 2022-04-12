@@ -1,0 +1,17 @@
+Pocket Orchestra font format
+
+Small variable-width font for ASCII only.
+We store 96 codepoints (0x20 thru 0x7f) in 32 bits each:
+  0xc0000000 vertical start
+  0x38000000 width
+  0x07ffffff image LRTB big-endianly
+
+There are 27 bits available for the image.
+So 5x5 and 3x9 are fully expressible.
+Anything bigger, eg 6x5 the last two pixels at bottom right must be zero.
+
+Line height is always 9 pixels.
+
+An all-zero glyph is treated like space: 3 pixels wide by default.
+
+All glyphs get one pixel horizontal space between them.
