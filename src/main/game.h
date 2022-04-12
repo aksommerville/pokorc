@@ -1,5 +1,6 @@
 /* game.h
  * Game logic and rendering here.
+ * We also handle the "game over" splash, but not the "song select" one.
  */
  
 #ifndef GAME_H
@@ -18,7 +19,9 @@ void game_begin(
   struct fakesheet *fakesheet
 );
 
-void game_input(uint8_t input,uint8_t pvinput);
+// 1 to proceed, 0 to return to song select.
+uint8_t game_input(uint8_t input,uint8_t pvinput);
+
 void game_update();
 void game_render(struct image *image);
 

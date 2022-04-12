@@ -105,3 +105,20 @@ uint16_t image_blit_string(
   }
   return dstx-dstx0;
 }
+
+/* Fill rect.
+ */
+ 
+void image_fill_rect(struct image *image,int16_t x,int16_t y,int16_t w,int16_t h,uint16_t color) {
+  if (x<0) { w+=x; x=0; }
+  if (y<0) { h+=y; y=0; }
+  if (x>image->w-w) w=image->w-x;
+  if (y>image->h-h) h=image->h-y;
+  if ((w<1)||(h<1)) return;
+  uint16_t *dstrow=image->v+y*image->w+x;
+  for (;h-->0;dstrow+=image->w) {
+    uint16_t *dstp=dstrow;
+    int16_t xi=w;
+    for (;xi-->0;dstp++) *dstp=color;
+  }
+}

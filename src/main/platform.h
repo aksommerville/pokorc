@@ -65,6 +65,8 @@ uint16_t image_blit_string(
   const uint32_t *font /*96*/
 );
 
+void image_fill_rect(struct image *image,int16_t x,int16_t y,int16_t w,int16_t h,uint16_t color);
+
 #ifdef __cplusplus
   }
 #endif

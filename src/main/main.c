@@ -67,7 +67,10 @@ void loop() {
   
   if (input!=pvinput) {
     if (songinfo) {
-      game_input(input,pvinput);
+      if (!game_input(input,pvinput)) {
+        songinfo=0;
+        menu_init();
+      }
     } else {
       songinfo=menu_input(input,pvinput);
       if (songinfo) game_begin(songinfo,&synth,&fakesheet);

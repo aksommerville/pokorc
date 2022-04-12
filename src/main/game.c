@@ -9,12 +9,18 @@
 /* Globals.
  */
 
-static uint32_t totalscore=0; // bottom line. can go both up and down
-static uint32_t combolength=0; // how many notes hit without a miss or overlook
-static uint8_t combopower=0; // minimum score of any note in the running combo
-static uint32_t totalhitc=0; // hitc+overlookc is the count of notes in the fakesheet
-static uint32_t totalmissc=0; // missc is unconstrained; how many unexpected notes played by user
-static uint32_t totaloverlookc=0;
+struct score {
+  uint32_t total; // Bottom line, can go up and down.
+  uint16_t combolength; // How many consecutive hits without a miss or overlook.
+  uint16_t hitc; // Notes struck well.
+  uint16_t missc; // Unexpected notes struck.
+  uint16_t overlookc; // Song notes that weren't struck.
+  uint16_t hist[11]; // How many strokes at each quality level.
+  uint16_t maxcombo; // Highest value of combolength.
+  // Derived at finalize:
+  uint16_t histmax;
+  uint16_t notec;
+} score={0};
 
 static uint32_t lastsongtime=0;
 static uint32_t beatc=0;
@@ -50,30 +56,32 @@ static struct note {
 static struct synth *synth=0;
 static struct fakesheet *fakesheet=0;
 static uint8_t input=0;
+static uint8_t complete=0;
+static uint8_t pending_complete=0;
 
 /* Scoring.
  */
  
 #define MISS_VALUE 3
 #define OVERLOOK_VALUE 4
+#define DOUBLE_COMBO_LENGTH 15
+#define TRIPLE_COMBO_LENGTH 30
  
 static uint8_t score_hit(uint8_t col,uint8_t points) {
   // Played a note acceptably close to an expected one. (points) in 0..10
   //fprintf(stderr,"%s %d +%d\n",__func__,col,points);
   
-  if (!combolength) {
-    combolength=1;
-    combopower=points;
-  } else {
-    combolength++;
-    if (points<combopower) combopower++;
-  }
+  if (points<=0) score.hist[0]++;
+  else if (points>=10) score.hist[10]++;
+  else score.hist[points]++;
   
-  if (combolength>=20) points*=3;
-  else if (combolength>=15) points*=2;
+  score.combolength++;
+  if (score.combolength>score.maxcombo) score.maxcombo=score.combolength;
+  if (score.combolength>=TRIPLE_COMBO_LENGTH) points*=3;
+  else if (score.combolength>=DOUBLE_COMBO_LENGTH) points*=2;
   
-  totalhitc++;
-  totalscore+=points;
+  score.hitc++;
+  score.total+=points;
   
   return points;
 }
@@ -82,28 +90,36 @@ static void score_miss(uint8_t col) {
   // Played a note but nothing expected on that channel.
   //fprintf(stderr,"%s %d\n",__func__,col);
   
-  if (combolength) {
+  if (score.combolength) {
     //fprintf(stderr,"End of %d-note combo, power=%d\n",combolength,combopower);
-    combolength=0;
+    score.combolength=0;
   }
   
-  totalmissc++;
-  if (totalscore<MISS_VALUE) totalscore=0;
-  else totalscore-=MISS_VALUE;
+  score.missc++;
+  if (score.total<MISS_VALUE) score.total=0;
+  else score.total-=MISS_VALUE;
 }
 
 static void score_overlook(uint8_t col) {
   // Note slipped past the user unplayed.
   //fprintf(stderr,"%s %d\n",__func__,col);
   
-  if (combolength) {
+  if (score.combolength) {
     //fprintf(stderr,"End of %d-note combo, power=%d\n",combolength,combopower);
-    combolength=0;
+    score.combolength=0;
   }
   
-  totaloverlookc++;
-  if (totalscore<OVERLOOK_VALUE) totalscore=0;
-  else totalscore-=OVERLOOK_VALUE;
+  score.overlookc++;
+  if (score.total<OVERLOOK_VALUE) score.total=0;
+  else score.total-=OVERLOOK_VALUE;
+}
+
+static void finalize_score() {
+  score.notec=score.hitc+score.overlookc;
+  score.histmax=0;
+  const uint16_t *v=score.hist;
+  uint8_t i=11;
+  for (;i-->0;v++) if (*v>score.histmax) score.histmax=*v;
 }
 
 /* Notes
@@ -132,6 +148,7 @@ static void drop_all_notes() {
  */
  
 static void cb_fakesheet_event(uint32_t time,uint8_t channel,uint8_t waveid,uint8_t noteid) {
+  if (complete||pending_complete) return;
   struct note *note=notev;
   uint8_t i=NOTEC;
   for (;i-->0;note++) {
@@ -180,6 +197,14 @@ void game_begin(
   fakesheet->eventc=fakesheetlen;
   
   init_notes();
+  input=0;
+  complete=0;
+  pending_complete=0;
+  memset(&score,0,sizeof(score));
+  
+  struct toast *toast=toastv;
+  uint8_t i=TOAST_LIMIT;
+  for (;i-->0;toast++) toast->type=TOAST_TYPE_NONE;
 }
 
 /* Replace (y) in each live note, based on the given absolute song time in frames.
@@ -329,17 +354,44 @@ static void drop_note(uint8_t col) {
 /* Receive input.
  */
  
-void game_input(uint8_t _input,uint8_t pvinput) {
+uint8_t game_input(uint8_t _input,uint8_t pvinput) {
   input=_input;
   #define BTN(tag,col) \
     if ((input&BUTTON_##tag)&&!(pvinput&BUTTON_##tag)) play_note(col); \
     else if (!(input&BUTTON_##tag)&&(pvinput&BUTTON_##tag)) drop_note(col);
-  BTN(LEFT,0)
-  BTN(UP,1)
-  BTN(RIGHT,2)
-  BTN(B,3)
-  BTN(A,4)
+  if (pending_complete) {
+  } else if (complete) {
+    if ((input&BUTTON_A)&&!(pvinput&BUTTON_A)) return 0;
+  } else {
+    BTN(LEFT,0)
+    BTN(UP,1)
+    BTN(RIGHT,2)
+    BTN(B,3)
+    BTN(A,4)
+  }
   #undef BTN
+  return 1;
+}
+
+/* Update.
+ */
+ 
+void game_update() {
+  if (synth->song) {
+    beatc=synth->songtime/song_frames_per_beat;
+    update_notes();
+    update_toasts();
+  } else if (complete) {
+  } else if (pending_complete) {
+    update_toasts();
+    pending_complete--;
+    if (!pending_complete) {
+      complete=1;
+    }
+  } else {
+    pending_complete=60;
+    finalize_score();
+  }
 }
 
 /* Render decimal integer.TODO replace color
@@ -373,6 +425,45 @@ static void render_int(struct image *dst,int16_t dstx,int16_t dsty,int32_t n,uin
   }
 }
 
+/* Render final report.
+ */
+ 
+static void draw_final_report(struct image *fb) {
+  // we have about (3,3,60,50) to work with
+  
+  // Histogram of pre-combo scores.
+  const uint8_t hist_colw=5;
+  const uint8_t hist_h=10;
+  uint8_t hist_x=5;
+  uint8_t hist_y=4;
+  if (score.histmax) {
+    uint8_t i=0;
+    int16_t x=hist_x;
+    for (;i<11;i++,x+=hist_colw) {
+      int16_t h=(score.hist[i]*hist_h)/score.histmax;
+      int16_t y=hist_y+hist_h-h;
+      image_fill_rect(fb,x,y,hist_colw,h,(i&1)?0x1f00:0x1000);
+    }
+  }
+  
+  int16_t y=hist_y+hist_h+1;
+  char buf[32];
+  uint8_t bufc=snprintf(buf,sizeof(buf),"Notes: %d",score.notec);
+  image_blit_string(fb,5,y,buf,bufc,0xffff,font);
+  y+=9;
+  bufc=snprintf(buf,sizeof(buf),"Combo: %d",score.maxcombo);
+  image_blit_string(fb,5,y,buf,bufc,0xffff,font);
+  y+=9;
+  bufc=snprintf(buf,sizeof(buf),"Misfire: %d",score.missc);
+  image_blit_string(fb,5,y,buf,bufc,0xffff,font);
+  y+=9;
+  bufc=snprintf(buf,sizeof(buf),"Miss: %d",score.overlookc);
+  image_blit_string(fb,5,y,buf,bufc,0xffff,font);
+  y+=9;
+  
+  //TODO show all-time high. maybe eliminate the buttons
+}
+
 /* Render.
  */
  
@@ -382,14 +473,16 @@ void game_render(struct image *fb) {
   memset(fb->v,0,fb->w*fb->h*2);
   
   // 5 track backgrounds.
-  image_blit_opaque(fb, 8,0,&bits,8,7,2,64);
-  image_blit_opaque(fb,20,0,&bits,8,7,2,64);
-  image_blit_opaque(fb,32,0,&bits,8,7,2,64);
-  image_blit_opaque(fb,44,0,&bits,8,7,2,64);
-  image_blit_opaque(fb,56,0,&bits,8,7,2,64);
+  if (!complete) {
+    image_blit_opaque(fb, 8,0,&bits,8,7,2,64);
+    image_blit_opaque(fb,20,0,&bits,8,7,2,64);
+    image_blit_opaque(fb,32,0,&bits,8,7,2,64);
+    image_blit_opaque(fb,44,0,&bits,8,7,2,64);
+    image_blit_opaque(fb,56,0,&bits,8,7,2,64);
+  }
   
   // Notes.
-  {
+  if (!complete) {
     struct note *note=notev;
     uint8_t i=NOTEC;
     for (;i-->0;note++) {
@@ -400,7 +493,9 @@ void game_render(struct image *fb) {
   }
   
   // "Now" line.
-  image_blit_colorkey(fb,0,52,&bits,11,21,66,1);
+  if (!complete) {
+    image_blit_colorkey(fb,0,52,&bits,11,21,66,1);
+  }
   
   // 5 button indicators.
   #define BTN(ix,tag) image_blit_colorkey(fb,3+ix*12,56,&bits,10+ix*12,7+((input&BUTTON_##tag)?7:0),12,7);
@@ -412,7 +507,7 @@ void game_render(struct image *fb) {
   #undef BTN
   
   // Fireworks.
-  {
+  if (!complete) {
     struct toast *toast=toastv;
     uint8_t i=TOAST_LIMIT;
     for (;i-->0;toast++) switch (toast->type) {
@@ -426,7 +521,7 @@ void game_render(struct image *fb) {
   }
   
   // Score.
-  render_int(fb,69,3,totalscore,5);
+  render_int(fb,69,3,score.total,5);
   
   // Dancer. TODO fancier
   uint32_t subtiming=synth->songtime%song_frames_per_beat;
@@ -442,14 +537,20 @@ void game_render(struct image *fb) {
   
   // Combo quality indicator.
   image_blit_opaque(fb,69,37,&bits,10,40,24,24);
-  int16_t combow=combolength*2;
-  if (combow>24) combow=24;
-  image_blit_opaque(fb,69,37,&bits,34,40,combow,24);
-  if (combolength>=15) { // "Captain! Sensors indicate that music is happening!"
-    if (!(beatc&1)) {
-      image_blit_colorkey(fb,69,37,&bits,58,40,24,24);
+  if (!complete) {
+    int16_t combow=score.combolength*2;
+    if (combow>24) combow=24;
+    image_blit_opaque(fb,69,37,&bits,34,40,combow,24);
+    if (score.combolength>=TRIPLE_COMBO_LENGTH) { // "Captain! Sensors indicate that music is happening!"
+      if (beatc&1) {
+        image_blit_colorkey(fb,69,37,&bits,72,40,14,18);
+      } else {
+        image_blit_colorkey(fb,69,37,&bits,58,40,14,18);
+      }
     }
   }
+  
+  if (complete) draw_final_report(fb);
   
   // Frames. (note that the corners overlap, that's ok)
   image_blit_colorkey(fb,0,0,&bits,4,7,4,64); // left
@@ -457,13 +558,4 @@ void game_render(struct image *fb) {
   image_blit_colorkey(fb,0,0,&bits,0,3,96,4); // top
   image_blit_colorkey(fb,0,60,&bits,0,0,96,4); // bottom
   image_blit_colorkey(fb,62,0,&bits,0,7,8,64); // full-height horz divider
-}
-
-/* Update.
- */
- 
-void game_update() {
-  beatc=synth->songtime/song_frames_per_beat;
-  update_notes();
-  update_toasts();
 }

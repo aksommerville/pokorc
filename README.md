@@ -3,23 +3,24 @@
 ## TODO
 
 - [x] Song select, intro splash
-- [ ] Game over splash
+- [x] Game over splash
 - [ ] Customizable dancer
 - - [ ] React to combo
-- [ ] Finalize scoring
+- [x] Finalize scoring
 - - There's three levels of combo multiplier. The second and third are too close together.
-- - [ ] Extra fireworks when you reach the next multiplier.
+- - xxx Extra fireworks when you reach the next multiplier. meh
 - [x] Fireworks
 - [ ] Persist high scores
 - [ ] MacOS drivers
 - [ ] Windows drivers
 - [ ] Tiny menu thumbnail
-- [ ] Pause menu (down 3 times?)
+- xxx Pause menu (down 3 times?). meh
 - [ ] Are notes passing the line below the cue? Take screencaps at the moment we register a note.
 - - It feels like they're low at the cue moment.
 - [ ] Test the boundaries, how far off do you have to be to miss a note?
 - [ ] Eliminate redundant notes from tinylamb and goatpotion
 - [ ] More songs
+- [ ] Sort songs by difficulty.
 - [ ] Final waves
 
 ## Defects
