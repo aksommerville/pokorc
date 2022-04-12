@@ -137,6 +137,7 @@ static int cvtimg_generate_c(struct tool *tool,struct png_image *image) {
   if (encode_fmt(&tool->dst,"  .v=(void*)%.*s,\n",storagenamec,storagename)<0) return -1;
   if (encode_fmt(&tool->dst,"  .w=%d,\n",image->w)<0) return -1;
   if (encode_fmt(&tool->dst,"  .h=%d,\n",image->h)<0) return -1;
+  if (encode_fmt(&tool->dst,"  .stride=%d,\n",image->w)<0) return -1;
   if (encode_fmt(&tool->dst,"};\n")<0) return -1;
   
   return 0;

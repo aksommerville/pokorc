@@ -33,7 +33,8 @@ void platform_send_framebuffer(const void *fb);
  
 struct image {
   uint16_t *v;
-  int w,h;
+  int16_t w,h;
+  int16_t stride; // in pixels
 };
 
 /* We check output bounds but not input -- one presumes you know the input geometry well.

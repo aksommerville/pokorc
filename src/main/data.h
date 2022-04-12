@@ -29,7 +29,7 @@ extern const uint8_t tinylamb[];
 extern const struct songinfo {
   const uint8_t *song;
   const char *name;
-  //TODO dancer? difficulty? copyright?
+  uint8_t dancerid;
 } songinfov[];
 extern const uint8_t songinfoc;
 

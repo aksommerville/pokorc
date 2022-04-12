@@ -3,6 +3,7 @@
 #include "data.h"
 #include "synth.h"
 #include "fakesheet.h"
+#include "dancer.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -197,6 +198,8 @@ void game_begin(
   fakesheet->eventc=fakesheetlen;
   
   init_notes();
+  dancer_init(songinfo->dancerid);
+  
   input=0;
   complete=0;
   pending_complete=0;
@@ -394,7 +397,7 @@ void game_update() {
   }
 }
 
-/* Render decimal integer.TODO replace color
+/* Render decimal integer.
  */
  
 static void render_int(struct image *dst,int16_t dstx,int16_t dsty,int32_t n,uint8_t digitc) {
@@ -523,17 +526,15 @@ void game_render(struct image *fb) {
   // Score.
   render_int(fb,69,3,score.total,5);
   
-  // Dancer. TODO fancier
+  // Dancer.
+  struct image dancerdst={
+    .w=24,
+    .h=24,
+    .stride=fb->stride,
+    .v=fb->v+12*fb->stride+69,
+  };
   uint32_t subtiming=synth->songtime%song_frames_per_beat;
-  uint8_t frame=(subtiming*4)/song_frames_per_beat;
-  int16_t srcx;
-  switch (frame) {
-    case 0: srcx=12*0; break;
-    case 1: srcx=12*4; break;
-    case 2: srcx=12*0; break;
-    case 3: srcx=12*5; break;
-  }
-  image_blit_colorkey(fb,75,12,&dancer,srcx,0,12,24);
+  dancer_update(&dancerdst,subtiming,song_frames_per_beat,beatc);
   
   // Combo quality indicator.
   image_blit_opaque(fb,69,37,&bits,10,40,24,24);

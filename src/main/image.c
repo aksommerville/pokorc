@@ -21,11 +21,11 @@ void image_blit_opaque(
   int16_t w,int16_t h
 ) {
   PREBLIT
-  uint16_t *dstrow=dst->v+dsty*dst->w+dstx;
-  const uint16_t *srcrow=src->v+srcy*src->w+srcx;
+  uint16_t *dstrow=dst->v+dsty*dst->stride+dstx;
+  const uint16_t *srcrow=src->v+srcy*src->stride+srcx;
   int yi=h;
   int cpc=w<<1;
-  for (;yi-->0;dstrow+=dst->w,srcrow+=src->w) {
+  for (;yi-->0;dstrow+=dst->stride,srcrow+=src->stride) {
     memcpy(dstrow,srcrow,cpc);
   }
 }
@@ -39,10 +39,10 @@ void image_blit_colorkey(
   int16_t w,int16_t h
 ) {
   PREBLIT
-  uint16_t *dstrow=dst->v+dsty*dst->w+dstx;
-  const uint16_t *srcrow=src->v+srcy*src->w+srcx;
+  uint16_t *dstrow=dst->v+dsty*dst->stride+dstx;
+  const uint16_t *srcrow=src->v+srcy*src->stride+srcx;
   int yi=h;
-  for (;yi-->0;dstrow+=dst->w,srcrow+=src->w) {
+  for (;yi-->0;dstrow+=dst->stride,srcrow+=src->stride) {
     uint16_t *dstp=dstrow;
     const uint16_t *srcp=srcrow;
     int xi=w;
@@ -65,10 +65,10 @@ uint8_t image_blit_glyph(
   if (!srcw) return 0; // nonzero but zero width denotes a "nothing" glyph (which we don't use)
   dsty+=srcy;
   
-  uint16_t *dstrow=dst->v+dsty*dst->w+dstx;
+  uint16_t *dstrow=dst->v+dsty*dst->stride+dstx;
   uint32_t mask=0x04000000;
   uint8_t yi=8;
-  for (;yi-->0;dstrow+=dst->w,dsty++) {
+  for (;yi-->0;dstrow+=dst->stride,dsty++) {
     if (dsty>=dst->h) return srcw+1;
     if (dsty<0) {
       mask>>=srcw;
@@ -116,7 +116,7 @@ void image_fill_rect(struct image *image,int16_t x,int16_t y,int16_t w,int16_t h
   if (y>image->h-h) h=image->h-y;
   if ((w<1)||(h<1)) return;
   uint16_t *dstrow=image->v+y*image->w+x;
-  for (;h-->0;dstrow+=image->w) {
+  for (;h-->0;dstrow+=image->stride) {
     uint16_t *dstp=dstrow;
     int16_t xi=w;
     for (;xi-->0;dstp++) *dstp=color;

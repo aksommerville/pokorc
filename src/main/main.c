@@ -16,7 +16,9 @@ static struct image fb={
   .v=fbstorage,
   .w=96,
   .h=64,
+  .stride=96,
 };
+static struct image dancerdst;
 
 static uint8_t input=0;
 static uint8_t pvinput=0;
