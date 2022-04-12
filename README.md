@@ -24,11 +24,11 @@
 
 ## Defects
 
-- 2022-04-11T18:18 stuck note in tinylamb
+- ~2022-04-11T18:18 stuck note in tinylamb~
 - - Not reliably reproducible.
 - - I had forgotten to lock ALSA from genioc during loop().
 - - [x] Play ten times with the lock, if you don't get stuck call it fixed.
 
-- 2022-04-11T20:37 tinylamb crashes the Tiny.
+- ~2022-04-11T20:37 tinylamb crashes the Tiny.~
 - - This happened before and I fixed it by reading the song as uint8_t instead of uint32_t
 - - [x] Made the same change reading song header (uint8_t rather than uint16_t). I guess that fixed it?
