@@ -1,5 +1,6 @@
 #include "platform.h"
 #include <string.h>
+#include <stdio.h>
 
 /* Blit preamble.
  */

@@ -19,11 +19,13 @@ void dancer_init(uint8_t dancerid);
 /* Draw to (dst), filling it.
  * (timep) should be in (0..timec-1), our position within the beat.
  * (beatp) is how many beats elapsed.
+ * (quality) comes mostly from the running combo: 0..4
  */
 void dancer_update(
   struct image *dst,
   uint32_t timep,uint32_t timec,
-  uint32_t beatp
+  uint32_t beatp,
+  uint8_t quality
 );
 
 #endif

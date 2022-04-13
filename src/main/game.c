@@ -123,6 +123,20 @@ static void finalize_score() {
   for (;i-->0;v++) if (*v>score.histmax) score.histmax=*v;
 }
 
+static uint8_t calculate_score_quality() {
+  if ((score.combolength>=TRIPLE_COMBO_LENGTH*2)&&!score.missc&&!score.overlookc) {
+    return 4;
+  } else if (score.combolength>=TRIPLE_COMBO_LENGTH) {
+    return 3;
+  } else if (score.combolength>=DOUBLE_COMBO_LENGTH) {
+    return 2;
+  } else if (score.combolength) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
 /* Notes
  */
  
@@ -534,7 +548,7 @@ void game_render(struct image *fb) {
     .v=fb->v+12*fb->stride+69,
   };
   uint32_t subtiming=synth->songtime%song_frames_per_beat;
-  dancer_update(&dancerdst,subtiming,song_frames_per_beat,beatc);
+  dancer_update(&dancerdst,subtiming,song_frames_per_beat,beatc,calculate_score_quality());
   
   // Combo quality indicator.
   image_blit_opaque(fb,69,37,&bits,10,40,24,24);
