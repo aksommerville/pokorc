@@ -548,7 +548,7 @@ void game_render(struct image *fb) {
     .v=fb->v+12*fb->stride+69,
   };
   uint32_t subtiming=synth->songtime%song_frames_per_beat;
-  dancer_update(&dancerdst,subtiming,song_frames_per_beat,beatc,calculate_score_quality());
+  dancer_update(&dancerdst,subtiming,synth->song?song_frames_per_beat:1,beatc,calculate_score_quality());
   
   // Combo quality indicator.
   image_blit_opaque(fb,69,37,&bits,10,40,24,24);

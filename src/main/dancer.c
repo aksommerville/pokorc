@@ -1,6 +1,7 @@
 #include "dancer.h"
 #include "platform.h"
 #include "data.h"
+#include <stdlib.h>
 
 /* Globals.
  */
@@ -118,7 +119,7 @@ static void raccoon_update(
     }
   }
   
-  image_blit_colorkey(dst,6,0,&dancer,0+bodyframe*12,8,12,24);
+  image_blit_colorkey(dst,6,0,&dancer,0+bodyframe*12,8,12,20);
   image_blit_colorkey(dst,7,1+headdy,&dancer,0+headframe*10,0,10,8);
 }
 
@@ -140,7 +141,26 @@ static void robot_update(
 /* Astronaut.
  */
  
+#define STAR_COUNT 60
+static struct star {
+  uint32_t y; // >>16
+  uint16_t luma; // brightness and speed
+  int16_t x; // 0..23
+} starv[STAR_COUNT];
+
+static uint8_t astrovelocity=0;
+static uint8_t astromanextent=0;
+ 
 static void astronaut_init() {
+  struct star *star=starv;
+  uint8_t i=STAR_COUNT;
+  for (;i-->0;star++) {
+    star->x=rand()%24;
+    star->y=(rand()%24)<<16;
+    star->luma=rand()|0x0080;
+  }
+  astrovelocity=0;
+  astromanextent=0;
 }
 
 static void astronaut_update(
@@ -149,7 +169,81 @@ static void astronaut_update(
   uint32_t beatp,
   uint8_t quality
 ) {
-  //TODO
+
+  // At end of song, pack up.
+  if (timec==1) quality=0;
+  
+  switch (quality) {
+    case 0: {
+        if (astrovelocity>0) astrovelocity--;
+        if (astromanextent>0) astromanextent--;
+      } break;
+    case 1: {
+        if (astrovelocity<40) astrovelocity++;
+        else if (astrovelocity>40) astrovelocity--;
+        if (astromanextent>0) astromanextent--;
+      } break;
+    case 2: {
+        if (astrovelocity<120) astrovelocity++;
+        else if (astrovelocity>120) astrovelocity--;
+        if (astromanextent<120) astromanextent++; // both 120, it's a coincidence
+      } break;
+    case 3: {
+        if (astrovelocity<190) astrovelocity++;
+        else if (astrovelocity>190) astrovelocity--;
+      } break;
+    default: {
+        if (astrovelocity<255) astrovelocity++;
+      }
+  }
+  
+  // Background starfield.
+  struct star *star=starv;
+  uint8_t i=STAR_COUNT;
+  for (;i-->0;star++) {
+    uint16_t rgb=((star->luma&0xf800)>>3)|0x0100;
+    rgb=rgb|(rgb>>5)|(rgb>>10)|(rgb<<5);
+    dst->v[(star->y>>16)*dst->stride+star->x]=rgb;
+    uint16_t v=(star->luma*astrovelocity)>>8;
+    star->y+=v;
+    if (star->y>=(24<<16)) {
+      star->x=rand()%24;
+      star->y=0;
+      star->luma=rand()|0x0008;
+    }
+  }
+  
+  // Ship body.
+  if (astromanextent) {
+    image_blit_colorkey(dst,13,5,&dancer,10,28,10,14);
+  } else {
+    image_blit_colorkey(dst,13,5,&dancer,0,28,10,14);
+  }
+  
+  // Fire from engines.
+  if (quality) {
+    image_blit_colorkey(dst,13,19,&dancer,(beatp&1)?10:0,42,10,4);
+  }
+  
+  if (astromanextent) {
+    uint8_t mandx=(astromanextent*9)/120;
+    uint8_t mandy=(astromanextent*6)/120;
+    int8_t truncate=8-mandx;
+    if (truncate<0) truncate=0;
+    
+    uint8_t manframe=0;
+    if (astromanextent>=120) {
+      if (timep>=(timec>>1)) {
+        manframe=(beatp&1)?1:2;
+      }
+    }
+  
+    // Umbilicus.
+    image_blit_colorkey(dst,10+truncate,8+truncate,&dancer,20+truncate,28+truncate,7-truncate,7-truncate);
+  
+    // Space man.
+    image_blit_colorkey(dst,12-mandx,9-mandy,&dancer,20+8*manframe,35,8,9);
+  }
 }
 
 /* Dispatch.
