@@ -307,6 +307,35 @@ export class Editor {
   
   onQuantize() {
     if (!this.song) return;
-    console.log(`ok lets quantize`);//TODO
+    if (this.draggingEvent) return;
+    const controller = this.dom.spawnModal(ParametersModal);
+    controller.setup("Quantize...", {
+      //TODO quantize params
+    }, {
+      // ...
+    });
+    controller.onsubmit = (params) => {
+      this.songOperations.quantize(this.song, params);
+      this.redrawLater();
+      this.onDirty();
+    };
+  }
+  
+  onZapInput() {
+    if (!this.song) return;
+    if (this.draggingEvent) return;
+    this.chartRenderer.highlightEvent = null;
+    this.songOperations.zapInput(this.song);
+    this.redrawLater();
+    this.onDirty();
+  }
+  
+  onReformat() {
+    if (!this.song) return;
+    if (this.draggingEvent) return;
+    this.chartRenderer.highlightEvent = null; // just to be safe
+    this.songOperations.reformat(this.song);
+    this.redrawLater();
+    this.onDirty();
   }
 }

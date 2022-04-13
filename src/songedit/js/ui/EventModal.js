@@ -82,8 +82,8 @@ export class EventModal {
     _("meta", event.meta);
     _("body", event.body);
     _("program", event.program);
-    _("wave", event.program & 0x07);
-    _("input", event.program & 0x38);
+    _("wave", event.program);
+    _("input", event.b & 0xf0);
   }
   
   readForm() {
@@ -235,8 +235,8 @@ export class EventModal {
     const value = event.target.value;
     if (!this.event) return;
     switch (key) {
-      case "wave": this.event.program = (this.event.program & ~0x07) | (value & 0x07); break;
-      case "input": this.event.program = (this.event.program & ~0x38) | (value & 0x38); break;
+      case "wave": this.event.program = value & 0x07; break;
+      case "input": this.event.b = value ? (value | 0x08) : 0x01; break;
       default: this.event[key] = value; break;
     }
     this.rewriteDetail(event.target.name);
@@ -276,9 +276,9 @@ EventModal.WAVES_PICKLIST = [
 
 EventModal.INPUTS_PICKLIST = [
   { value: 0x00, label: "None" },
-  { value: 0x08, label: "Left" },
-  { value: 0x10, label: "Up" },
-  { value: 0x18, label: "Right" },
-  { value: 0x20, label: "B" },
-  { value: 0x28, label: "A" },
+  { value: 0x30, label: "Left" },
+  { value: 0x40, label: "Up" },
+  { value: 0x50, label: "Right" },
+  { value: 0x60, label: "B" },
+  { value: 0x70, label: "A" },
 ];

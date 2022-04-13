@@ -22,6 +22,7 @@
 - [ ] More songs
 - [ ] Sort songs by difficulty.
 - [ ] Final waves
+- [x] New strategy for encoding cues in MIDI: Use Note On velocity instead of Program Change.
 
 ## Defects
 

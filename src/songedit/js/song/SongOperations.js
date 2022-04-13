@@ -37,6 +37,43 @@ export class SongOperations {
     //TODO
   }
   
+  zapInput(song) {
+    for (const event of song.events) {
+      if (event.type === Song.EVENT_NOTE_ON) {
+        event.b = 0x01;
+      }
+    }
+  }
+  
+  /* Converts from first attempt (Program Change 0x38 is input) to second (velocity is input).
+   * There should be no harm in reformatting a song designed for the new regime.
+   * Reformat on a song not designed for Pocket Orchestra may produce bizarre results, zapInput() after should help.
+   */
+  reformat(song) {
+    const programByChannel = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    for (const event of song.events) {
+      switch (event.type) {
+        case Song.EVENT_NOTE_ON: {
+            let pid = (event.program >= 0) ? event.program : programByChannel[event.channel];
+            switch ((pid >> 3) & 7) {
+              case 0: event.b = 0x01; break;
+              case 1: event.b = 0x38; break;
+              case 2: event.b = 0x48; break;
+              case 3: event.b = 0x58; break;
+              case 4: event.b = 0x68; break;
+              case 5: event.b = 0x78; break;
+              case 6: event.b = 0x02; break;//reserved
+              case 7: event.b = 0x03; break;//reserved
+            }
+            pid &= 7;
+            if (event.program >= 0) event.program = pid;
+            programByChannel[event.chid] = pid;
+          } break;
+        case Song.EVENT_PROGRAM: programByChannel[event.channel] = event.a; break;
+      }
+    }
+  }
+  
   /* Optimize, internals.
    ****************************************************************/
    

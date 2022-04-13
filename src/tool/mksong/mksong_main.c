@@ -90,9 +90,7 @@ static int mksong_advance_clock(struct mksong *mksong,int framec) {
 static int mksong_event_program_change(struct mksong *mksong,uint8_t chid,uint8_t pid) {
   if (chid>=16) return 0;
   uint8_t waveid=pid&0x07;
-  uint8_t input=(pid>>3)&0x07;
   mksong->wave_by_channel[chid]=waveid;
-  mksong->input_by_channel[chid]=input;
   return 0;
 }
 
@@ -125,13 +123,13 @@ static int mksong_event_note_off(struct mksong *mksong,uint8_t chid,uint8_t note
 /* Add hold. Fails if there isn't space.
  */
  
-static int mksong_hold_add(struct mksong *mksong,uint8_t chid,uint8_t noteid) {
+static struct mksong_hold *mksong_hold_add(struct mksong *mksong,uint8_t chid,uint8_t noteid) {
   struct mksong_hold *available=0,*hold=mksong->holdv;
   int i=MKSONG_HOLD_LIMIT;
   for (;i-->0;hold++) {
     if ((hold->chid==chid)&&(hold->noteid==noteid)) {
       fprintf(stderr,"%s:ERROR: Repeated note %d on channel %d\n",TOOL->srcpath,noteid,chid);
-      return -1;
+      return 0;
     }
     if (!available&&!hold->noteid) available=hold;
   }
@@ -140,13 +138,13 @@ static int mksong_hold_add(struct mksong *mksong,uint8_t chid,uint8_t noteid) {
       "%s:ERROR: Too many simultaneous notes, limit %d. Around note %d on channel %d.\n",
       TOOL->srcpath,MKSONG_HOLD_LIMIT,noteid,chid
     );
-    return -1;
+    return 0;
   }
   available->chid=chid;
   available->noteid=noteid;
   available->waveid=mksong->wave_by_channel[chid];
-  available->input=mksong->input_by_channel[chid];
-  return 0;
+  available->input=0;
+  return available;
 }
 
 /* Note On.
@@ -156,13 +154,21 @@ static int mksong_hold_add(struct mksong *mksong,uint8_t chid,uint8_t noteid) {
 static int mksong_event_note_on(struct mksong *mksong,uint8_t chid,uint8_t noteid,uint8_t velocity) {
   if (chid>=16) return 0;
   if (!noteid) return 0; // We depend on noteid being nonzero. I don't believe zero is useful as a MIDI note anyway.
-  if (mksong_hold_add(mksong,chid,noteid)<0) return -1;
+  struct mksong_hold *hold=mksong_hold_add(mksong,chid,noteid);
+  if (!hold) return -1;
   mksong->termevc++;
-  if (mksong->input_by_channel[chid]) {
+  switch (velocity>>4) {
+    case 3: hold->input=1; break;
+    case 4: hold->input=2; break;
+    case 5: hold->input=3; break;
+    case 6: hold->input=4; break;
+    case 7: hold->input=5; break;
+  }
+  if (hold->input) {
     if (mksong_fakesheet_append(
       mksong,
       mksong->timeticks,
-      mksong->input_by_channel[chid]-1,
+      hold->input-1,
       mksong->wave_by_channel[chid],
       noteid
     )<0) return -1;

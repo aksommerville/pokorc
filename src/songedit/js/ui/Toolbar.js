@@ -17,6 +17,8 @@ export class Toolbar {
     // Actions menu...
     this.onoptimize = () => {};
     this.onquantize = () => {};
+    this.onzapinput = () => {};
+    this.onreformat = () => {};
     
     this.buildUi();
   }
@@ -47,6 +49,8 @@ export class Toolbar {
     this.dom.spawn(actionSelect, "OPTION", null, { value: "default", disabled: true, selected: true }, "Actions...");
     this.dom.spawn(actionSelect, "OPTION", null, { value: "optimize" }, "Optimize...");
     this.dom.spawn(actionSelect, "OPTION", null, { value: "quantize" }, "Quantize...");
+    this.dom.spawn(actionSelect, "OPTION", null, { value: "zapinput" }, "Clear Inputs");
+    this.dom.spawn(actionSelect, "OPTION", null, { value: "reformat" }, "Reformat");
     actionSelect.addEventListener("change", () => this.onAction());
   }
   
@@ -67,6 +71,8 @@ export class Toolbar {
     switch (action) {
       case "optimize": this.onoptimize(); break;
       case "quantize": this.onquantize(); break;
+      case "zapinput": this.onzapinput(); break;
+      case "reformat": this.onreformat(); break;
     }
   }
 }

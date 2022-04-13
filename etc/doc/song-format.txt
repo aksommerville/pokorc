@@ -49,22 +49,12 @@ Stream of 32-bit integers:
 Basically use MIDI as MIDI, I'm trying not to fight the format too hard.
 
 The low three bits of Program ID select a wave 0..7.
-The next three bits select input mode:
-  0: None, just a musical note.
-  1: Left
-  2: Up
-  3: Right
-  4: B
-  5: A
-  6: Reserved
-  7: Reserved
-Higher bits of Program ID, and Bank ID, may be used for similar stuff in the future. Leave them zero.
-Beware that notes marked as Input will not play on their own -- double them if you want that.
-Since Input Mode is an intrinsic part of Program ID, it's sticky.
-Also note that Program ID is a channel property, so it does apply across tracks.
+The rest of Program ID is unused, reserved.
 
-I expect the normal pattern will be to have one track of input notes, with each input button on its own channel.
-That way, you separate the inputs for administrative use, and you don't need to repeat Program Change before each note.
-The cost is you need 5 available channels, probly not a big deal.
-
-!!! Do not issue Program Change on a channel with notes held. (or at least, don't change the Wave ID).
+We don't use velocity as velocity, so we've hijacked it for use as the input cue:
+  0x00..0x2f None
+  0x30..0x3f Left
+  0x40..0x4f Up
+  0x50..0x5f Right
+  0x60..0x6f B
+  0x70..0x7f A

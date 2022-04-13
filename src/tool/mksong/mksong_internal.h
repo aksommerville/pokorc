@@ -28,8 +28,7 @@ struct mksong {
   int parttime; // time%MKSONG_FRAMES_PER_TICK; accumulates excess to smooth out timing.
   int timeticks; // ticks actually emitted (probably redundant)
   
-  // Both derived from Program ID:
-  uint8_t input_by_channel[16];
+  // From Program ID:
   uint8_t wave_by_channel[16];
   
   struct mksong_hold {

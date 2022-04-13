@@ -252,7 +252,7 @@ export class ChartRenderer {
         } break;
       case "inputs": {
           if (event.type !== Song.EVENT_NOTE_ON) return false;
-          if (!(event.program & 0x38)) return false;
+          if (event.b < 0x30) return false;
         } break;
     }
     return true;
@@ -315,15 +315,13 @@ export class ChartRenderer {
     if (w < NOTE_WIDTH_MIN) w = NOTE_WIDTH_MIN;
     const y = (127 - event.a) * this.noteHeight - this.scroll[1];
     if (enabled) {
-      switch ((event.program >> 3) & 7) { // color by input
-        case 0: this.context.fillStyle = "#ccc"; break;
-        case 1: this.context.fillStyle = "#8a37c6"; break;
-        case 2: this.context.fillStyle = "#bc9519"; break;
-        case 3: this.context.fillStyle = "#1b73af"; break;
-        case 4: this.context.fillStyle = "#aa1940"; break;
-        case 5: this.context.fillStyle = "#2ba116"; break;
-        case 6: this.context.fillStyle = "#ffc"; break;
-        case 7: this.context.fillStyle = "#ffc"; break;
+      switch (event.b >> 4) { // color by input
+        case 3: this.context.fillStyle = "#8a37c6"; break;
+        case 4: this.context.fillStyle = "#bc9519"; break;
+        case 5: this.context.fillStyle = "#1b73af"; break;
+        case 6: this.context.fillStyle = "#aa1940"; break;
+        case 7: this.context.fillStyle = "#2ba116"; break;
+        default: this.context.fillStyle = "#ccc"; break;
       }
       this.context.strokeStyle = "#fff";
     } else {
