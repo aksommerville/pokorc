@@ -349,6 +349,51 @@ static void update_toasts() {
  
 #define DISTANCE_LIMIT 10 /* pixels */
 
+//XXX very temporary
+#include <fcntl.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/stat.h>
+extern struct image fb;
+static char discriminator='a';
+void save_screencap(uint8_t score) {
+  //mkdir("screencap",0775);
+  time_t now=0;
+  time(&now);
+  struct tm tm={0};
+  localtime_r(&now,&tm);
+  char path[1024];
+  snprintf(path,sizeof(path),
+    "screencap/%04d-%02d-%02dT%02d:%02d:%02d%c-%d.96x64.y8",
+    tm.tm_year+1900,
+    tm.tm_mon+1,
+    tm.tm_mday,
+    tm.tm_hour,
+    tm.tm_min,
+    tm.tm_sec,
+    discriminator,
+    score
+  );
+  if (discriminator=='z') discriminator='a';
+  else discriminator++;
+  uint8_t luma[96*64];
+  uint8_t *dst=luma;
+  const uint16_t *src=fb.v;
+  int i=96*64;
+  for (;i-->0;dst++,src++) {
+    uint8_t r=((*src)>>5)&0xf8;
+    uint8_t g=(((*src)>>11)|((*src)<<13))|0xfc;
+    uint8_t b=(*src)&0xf8;
+    uint8_t y=(r+g+b)/3;
+    y|=y>>5;
+    *dst=y;
+  }
+  int fd=open(path,O_WRONLY|O_CREAT|O_TRUNC,0666);
+  if (fd<0) return;
+  write(fd,luma,sizeof(luma));
+  close(fd);
+}
+
 static void play_note(uint8_t col) {
   if (col>=5) return;
   struct note *best=0;
@@ -373,6 +418,7 @@ static void play_note(uint8_t col) {
     best->scored=1;
     uint8_t points=score_hit(col,score);
     add_score_toast(col,points);
+    save_screencap(score);
   } else {
     synth_note_fireforget(synth,0,0x30,0x10);
     synth_note_fireforget(synth,0,0x36,0x10);

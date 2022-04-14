@@ -12,7 +12,7 @@
  */
 
 static uint16_t fbstorage[96*64];
-static struct image fb={
+/*static*/ struct image fb={
   .v=fbstorage,
   .w=96,
   .h=64,
