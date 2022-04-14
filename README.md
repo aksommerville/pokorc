@@ -4,16 +4,17 @@
 
 - [x] Song select, intro splash
 - [x] Game over splash
-- [ ] Customizable dancer
-- - [ ] React to combo
+- [x] Customizable dancer
+- - [x] React to combo
 - [x] Finalize scoring
 - - There's three levels of combo multiplier. The second and third are too close together.
 - - xxx Extra fireworks when you reach the next multiplier. meh
 - [x] Fireworks
 - [ ] Persist high scores
+- - [ ] Medal per song: None, Turkey, Ribbon, Cup
 - [ ] MacOS drivers
 - [ ] Windows drivers
-- [ ] Tiny menu thumbnail
+- [x] Tiny menu thumbnail
 - xxx Pause menu (down 3 times?). meh
 - [ ] Are notes passing the line below the cue? Take screencaps at the moment we register a note.
 - - It feels like they're low at the cue moment.
