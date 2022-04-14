@@ -21,6 +21,7 @@ out/native/data/%:src/data/include/%;$(PRECMD) cp $< $@
 out/tiny/data/%:src/data/include/%;$(PRECMD) cp $< $@
 
 CFILES:=$(filter %.c,$(SRCFILES))
+CXXFILES_MAIN:=$(filter src/main/%.cpp,$(SRCFILES))
 OFILES_NATIVE:=$(filter-out \
   $(addprefix mid/native/opt/,$(addsuffix /%,$(OPT_IGNORE_NATIVE))), \
   $(patsubst src/%.c,mid/native/%.o,$(CFILES)) \

@@ -10,8 +10,8 @@
 - - There's three levels of combo multiplier. The second and third are too close together.
 - - xxx Extra fireworks when you reach the next multiplier. meh
 - [x] Fireworks
-- [ ] Persist high scores
-- - [ ] Medal per song: None, Turkey, Ribbon, Cup
+- [x] Persist high scores
+- - [x] Medal per song: None, Turkey, Ribbon, Cup
 - [ ] MacOS drivers
 - [ ] Windows drivers
 - [x] Tiny menu thumbnail

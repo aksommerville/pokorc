@@ -327,6 +327,7 @@ static void clearWindow(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
 uint8_t platform_init() {
 
   Wire_begin();
+  usb_begin();
 
   spi_begin();
   sercom_setClockModeSPI(spisc,SERCOM_SPI_MODE_0);

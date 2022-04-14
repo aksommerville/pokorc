@@ -16,6 +16,7 @@ TINY_PACKAGE:=out/$(PROJECT_NAME).zip
 TINY_SRCFILES:= \
   $(EMBED_CFILES_TINY) \
   $(filter src/main/%,$(CFILES)) \
+  $(CXXFILES_MAIN) \
   $(filter src/main/%.h,$(SRCFILES)) \
   $(shell find src/opt/tiny -type f)
 

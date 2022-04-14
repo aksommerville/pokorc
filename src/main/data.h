@@ -30,6 +30,7 @@ extern const struct songinfo {
   const uint8_t *song;
   const char *name;
   uint8_t dancerid;
+  uint16_t songid; // for high scores
 } songinfov[];
 extern const uint8_t songinfoc;
 

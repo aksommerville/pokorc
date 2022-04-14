@@ -5,7 +5,7 @@ PO_NATIVE_PLATFORM:=linux
 
 ifeq ($(PO_NATIVE_PLATFORM),linux) #-----------------------------------------------
 
-  CC_NATIVE:=gcc -c -MMD -O2 -Isrc -Isrc/main -Werror -Wimplicit
+  CC_NATIVE:=gcc -c -MMD -O2 -Isrc -Isrc/main -Werror -Wimplicit -DPO_NATIVE=1
   LD_NATIVE:=gcc
   LDPOST_NATIVE:=-lm -lz -lasound -lX11 -lpthread
   OPT_ENABLE_NATIVE:=genioc alsa x11 evdev

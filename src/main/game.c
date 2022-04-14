@@ -4,6 +4,7 @@
 #include "synth.h"
 #include "fakesheet.h"
 #include "dancer.h"
+#include "highscore.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -21,6 +22,7 @@ struct score {
   // Derived at finalize:
   uint16_t histmax;
   uint16_t notec;
+  uint8_t medal;
 } score={0};
 
 static uint32_t lastsongtime=0;
@@ -59,6 +61,8 @@ static struct fakesheet *fakesheet=0;
 static uint8_t input=0;
 static uint8_t complete=0;
 static uint8_t pending_complete=0;
+static uint32_t highscore=0;
+static uint16_t songid=0;
 
 /* Scoring.
  */
@@ -121,6 +125,23 @@ static void finalize_score() {
   const uint16_t *v=score.hist;
   uint8_t i=11;
   for (;i-->0;v++) if (*v>score.histmax) score.histmax=*v;
+  
+  if ((score.hitc==score.notec)&&!score.missc&&!score.overlookc&&(score.hist[10]==score.hitc)) {
+    score.medal=HIGHSCORE_MEDAL_CUP;
+  } else if ((score.hitc==score.notec)&&!score.missc&&!score.overlookc) {
+    score.medal=HIGHSCORE_MEDAL_RIBBON;
+  } else if (score.hitc>score.missc+score.overlookc) {
+    score.medal=HIGHSCORE_MEDAL_PARTICIPANT;
+  } else {
+    score.medal=HIGHSCORE_MEDAL_TURKEY;
+  }
+  
+  uint8_t pvmedal=0;
+  highscore_get(&highscore,&pvmedal,songid);
+  if ((score.total>highscore)||(!score.total&&!highscore)) { // if it's zero, do save it (so it's not marked "unplayed")
+    fprintf(stderr,"*** new high score! %d(%d) > %d(%d)\n",score.total,score.medal,highscore,pvmedal);
+    highscore_set(songid,score.total,score.medal);
+  }
 }
 
 static uint8_t calculate_score_quality() {
@@ -217,6 +238,7 @@ void game_begin(
   input=0;
   complete=0;
   pending_complete=0;
+  songid=songinfo->songid;
   memset(&score,0,sizeof(score));
   
   struct toast *toast=toastv;
@@ -478,7 +500,15 @@ static void draw_final_report(struct image *fb) {
   image_blit_string(fb,5,y,buf,bufc,0xffff,font);
   y+=9;
   
-  //TODO show all-time high. maybe eliminate the buttons
+  if (score.total>highscore) {
+    bufc=snprintf(buf,sizeof(buf),"HIGH SCORE!");
+    image_blit_string(fb,5,y,buf,bufc,0xff07,font);
+    y+=9;
+  } else {
+    bufc=snprintf(buf,sizeof(buf),"High: %d",highscore);
+    image_blit_string(fb,5,y,buf,bufc,0xffff,font);
+    y+=9;
+  }
 }
 
 /* Render.
@@ -515,13 +545,15 @@ void game_render(struct image *fb) {
   }
   
   // 5 button indicators.
-  #define BTN(ix,tag) image_blit_colorkey(fb,3+ix*12,56,&bits,10+ix*12,7+((input&BUTTON_##tag)?7:0),12,7);
-  BTN(0,LEFT)
-  BTN(1,UP)
-  BTN(2,RIGHT)
-  BTN(3,B)
-  BTN(4,A)
-  #undef BTN
+  if (!complete) {
+    #define BTN(ix,tag) image_blit_colorkey(fb,3+ix*12,56,&bits,10+ix*12,7+((input&BUTTON_##tag)?7:0),12,7);
+    BTN(0,LEFT)
+    BTN(1,UP)
+    BTN(2,RIGHT)
+    BTN(3,B)
+    BTN(4,A)
+    #undef BTN
+  }
   
   // Fireworks.
   if (!complete) {
