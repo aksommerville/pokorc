@@ -32,6 +32,28 @@ int fiddle_make_default_waves() {
   return 0;
 }
 
+/* Upon replacing a wave, calculate its peak and RMS levels and log them.
+ */
+ 
+static void analyze_wave(double *peak,double *rms,const int16_t *src/*512*/) {
+  int16_t lo=src[0];
+  int16_t hi=src[0];
+  int64_t sqsum=0;
+  int i=512;
+  for (;i-->0;src++) {
+    if (*src<lo) lo=*src;
+    else if (*src>hi) hi=*src;
+    sqsum+=(*src)*(*src);
+  }
+  if (lo==-32768) lo=32767;
+  else if (lo<0) lo=-lo;
+  if (hi==-32768) hi=32767;
+  else if (hi<0) hi=-hi;
+  if (lo>hi) hi=lo;
+  *peak=hi/32767.0;
+  *rms=sqrt(sqsum/512.0)/32767.0;
+}
+
 /* If it looks like a wave source, decode and load it.
  */
  
@@ -60,7 +82,9 @@ int fiddle_wave_possible_change(const char *path,const char *base) {
     fprintf(stderr,"%s: Got unexpected length %d from mkwave. Expected 1024.\n",path,err);
   } else {
     memcpy(fiddle.wavev[n],tmp,sizeof(tmp));
-    fprintf(stderr,"%s: Replaced wave %d\n",path,n);
+    double peak=0.0,rms=0.0;
+    analyze_wave(&peak,&rms,tmp);
+    fprintf(stderr,"%s: Replaced wave %d peak=%f rms=%f\n",path,n,peak,rms);
   }
   
   pclose(child);

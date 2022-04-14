@@ -12,5 +12,15 @@
 - - Exactly ten pixels. That's very generous but I think reasonable.
 - [ ] Eliminate redundant notes from tinylamb and goatpotion
 - [ ] More songs
-- [ ] Final waves
+- [x] Final waves
 
+## Waves
+
+- 0: Basic quiet sine.
+- 1: Sharp organ.
+- 2: Square lead.
+- 3: Distortion lead.
+- 4: Wacky synth brass.
+- 5: Church organ.
+- 6: Heavy strings.
+- 7: Bells.
