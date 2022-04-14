@@ -11,15 +11,6 @@ EMBED_SRCFILES:=$(filter src/data/embed/%,$(SRCFILES))
 EMBED_CFILES_NATIVE:=$(patsubst src/data/embed/%,mid/native/data/embed/%.c,$(EMBED_SRCFILES))
 EMBED_CFILES_TINY:=$(patsubst src/data/embed/%,mid/tiny/data/embed/%.c,$(EMBED_SRCFILES))
 
-# "include" data files get included verbatim.
-# We might one day need to convert per-platform; we're ready for it.TODO we do want that; for the tiny menu splash
-INCLUDE_SRCFILES:=$(filter src/data/include/%,$(SRCFILES))
-INCLUDE_FILES_NATIVE:=$(patsubst src/data/include/%,out/native/data/%,$(INCLUDE_SRCFILES))
-INCLUDE_FILES_TINY:=$(patsubst src/data/include/%,out/tiny/data/%,$(INCLUDE_SRCFILES))
-all:$(INCLUDE_FILES_NATIVE) $(INCLUDE_FILES_TINY)
-out/native/data/%:src/data/include/%;$(PRECMD) cp $< $@
-out/tiny/data/%:src/data/include/%;$(PRECMD) cp $< $@
-
 CFILES:=$(filter %.c,$(SRCFILES))
 CXXFILES_MAIN:=$(filter src/main/%.cpp,$(SRCFILES))
 OFILES_NATIVE:=$(filter-out \
@@ -47,6 +38,17 @@ define TOOL_RULES
 endef
 TOOLS:=$(filter-out common,$(notdir $(wildcard src/tool/*)))
 $(foreach T,$(TOOLS),$(eval $(call TOOL_RULES,$T)))
+
+# "include" data files get included verbatim, for the most part.
+INCLUDE_SRCFILES:=$(filter src/data/include/%,$(SRCFILES))
+INCLUDE_FILES_NATIVE:=$(patsubst src/data/include/%,out/native/data/%,$(INCLUDE_SRCFILES))
+INCLUDE_FILES_TINY:=$(patsubst %/title.png,%/pokorc.tsv, \
+  $(patsubst src/data/include/%,out/tiny/data/%,$(INCLUDE_SRCFILES)) \
+)
+all:$(INCLUDE_FILES_NATIVE) $(INCLUDE_FILES_TINY)
+out/native/data/%:src/data/include/%;$(PRECMD) cp $< $@
+out/tiny/data/%:src/data/include/%;$(PRECMD) cp $< $@
+out/tiny/data/pokorc.tsv:src/data/include/title.png $(TOOL_cvtimg);$(PRECMD) $(TOOL_cvtimg) -o$@ $< --tiny
 
 define EMBED_RULES
   mid/$1/data/embed/%.c:src/data/embed/% $(TOOL_cvtraw);$$(PRECMD) $(TOOL_cvtraw) -o$$@ $$< $2

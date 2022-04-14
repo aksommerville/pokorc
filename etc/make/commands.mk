@@ -15,3 +15,11 @@ test:;echo "TODO: make $@" ; exit 1
 
 fiddle:$(TOOL_fiddle) $(TOOL_mkwave);$(TOOL_fiddle)
 songedit:;http-server src/songedit
+
+TA_MENU_BIN:=etc/ArcadeMenu.ino.bin
+ifneq (,$(TA_MENU_BIN))
+  deploy-menu:; \
+    stty -F /dev/$(TINY_PORT) 1200 ; \
+    sleep 2 ; \
+    $(TINY_PKGROOT)/arduino/tools/bossac/1.7.0-arduino3/bossac -i -d --port=$(TINY_PORT) -U true -i -e -w $(TA_MENU_BIN) -R
+endif
