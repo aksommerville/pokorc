@@ -3,28 +3,6 @@
  */
  
 export class Midi {
-  
-  /* Pocket Orchestra uses Program Change a little nonstandardly:
-   *   0x07 is the wave id 0..7
-   *   0x38 is the input id 0=none, 1..5=left,up,right,b,a, 6..7=reserved
-   *   0x40, and Bank Select, are reserved.
-   */
-  static describePocketOrchestraProgram(pid) {
-    let input;
-    switch ((pid >> 3) & 7) {
-      case 0: input = ""; break;
-      case 1: input = "[LEFT] "; break;
-      case 2: input = "[UP] "; break;
-      case 3: input = "[RIGHT] "; break;
-      case 4: input = "[B] "; break;
-      case 5: input = "[A] "; break;
-      case 6: input = "[!6!] "; break;
-      case 7: input = "[!7!] "; break;
-    }
-    const wave = pid & 7;
-    const prefix = (pid & 0xc0) ? "!RESERVED! " : "";
-    return `${prefix}${input}${wave}`;
-  }
 
   /* I think the convention among musicians is that octaves begin on C?
    * There are things I can tolerate and things I can't... Our octaves begin on A.

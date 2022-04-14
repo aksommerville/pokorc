@@ -81,8 +81,7 @@ export class EventModal {
     _("wheel", event.wheel);
     _("meta", event.meta);
     _("body", event.body);
-    _("program", event.program);
-    _("wave", event.program);
+    _("program", event.a);
     _("input", event.b & 0xf0);
   }
   
@@ -119,12 +118,11 @@ export class EventModal {
           case Song.EVENT_NOTE_OFF: return Midi.noteName(event.a);
           case Song.EVENT_NOTE_ADJUST: return Midi.noteName(event.a);
           case Song.EVENT_CONTROL: return Midi.controlKeyName(event.a);
-          case Song.EVENT_PROGRAM: return Midi.describePocketOrchestraProgram(event.a);
+          case Song.EVENT_PROGRAM: return "";
           case Song.EVENT_PRESSURE: return "";
         } break;
       case "b": return ""; // velocity, control value... never interesting
       case "wheel": return this.describeWheel(event.wheel);
-      case "program": return Midi.describePocketOrchestraProgram(event.program);
     }
     return "";
   }
@@ -177,7 +175,6 @@ export class EventModal {
     this.addRowInteger(table, "b", "Value", false);
     
     this.addRowInteger(table, "a", "Program", false);
-    this.addRowInteger(table, "program", "(Program)", false); // we also record effective program id in Note On
     this.addRowSelect(table, "wave", "Wave", EventModal.WAVES_PICKLIST, false);
     this.addRowSelect(table, "input", "Input", EventModal.INPUTS_PICKLIST, false);
     
@@ -235,7 +232,7 @@ export class EventModal {
     const value = event.target.value;
     if (!this.event) return;
     switch (key) {
-      case "wave": this.event.program = value & 0x07; break;
+      case "wave": console.warning("Can't change program at note level anymore"); return;
       case "input": this.event.b = value ? (value | 0x08) : 0x01; break;
       default: this.event[key] = value; break;
     }

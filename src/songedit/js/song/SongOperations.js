@@ -45,31 +45,40 @@ export class SongOperations {
     }
   }
   
-  /* Converts from first attempt (Program Change 0x38 is input) to second (velocity is input).
-   * There should be no harm in reformatting a song designed for the new regime.
-   * Reformat on a song not designed for Pocket Orchestra may produce bizarre results, zapInput() after should help.
+  resetPrograms(song) {
+    // Eliminate all Program Change events in place, and record which channels have notes.
+    const channelsWithNotes = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
+    for (let i=song.events.length; i-->0; ) {
+      const event = song.events[i];
+      if (event.type === Song.EVENT_PROGRAM) {
+        song.events.splice(i, 1);
+      } else if (event.type === Song.EVENT_NOTE_ON) {
+        channelsWithNotes[event.channel] = true;
+      }
+    }
+    // Insert one Program Change at the start of each channel.
+    for (let chid=0; chid<16; chid++) {
+      if (!channelsWithNotes[chid]) continue;
+      const track = song.events.find((e) => e.channel === chid)?.track || 0;
+      song.events.splice(0, 0, {
+        type: Song.EVENT_PROGRAM,
+        time: 0,
+        track,
+        channel: chid,
+        a: 0,
+      });
+    }
+  }
+  
+  /* params: {
+   *   into: integer
+   *   from: integer
+   * }
    */
-  reformat(song) {
-    const programByChannel = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  mergeChannels(song, params) {
     for (const event of song.events) {
-      switch (event.type) {
-        case Song.EVENT_NOTE_ON: {
-            let pid = (event.program >= 0) ? event.program : programByChannel[event.channel];
-            switch ((pid >> 3) & 7) {
-              case 0: event.b = 0x01; break;
-              case 1: event.b = 0x38; break;
-              case 2: event.b = 0x48; break;
-              case 3: event.b = 0x58; break;
-              case 4: event.b = 0x68; break;
-              case 5: event.b = 0x78; break;
-              case 6: event.b = 0x02; break;//reserved
-              case 7: event.b = 0x03; break;//reserved
-            }
-            pid &= 7;
-            if (event.program >= 0) event.program = pid;
-            programByChannel[event.chid] = pid;
-          } break;
-        case Song.EVENT_PROGRAM: programByChannel[event.channel] = event.a; break;
+      if (event.channel === params.from) {
+        event.channel = params.into;
       }
     }
   }

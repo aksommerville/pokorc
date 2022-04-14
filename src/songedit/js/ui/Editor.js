@@ -261,7 +261,7 @@ export class Editor {
       case Song.EVENT_NOTE_ON: return `note ${Midi.noteName(event.a) || event.a}, chan ${event.channel}`;
       case Song.EVENT_NOTE_ADJUST: return `adjust note ${Midi.noteName(event.a) || event.a}, chan ${event.channel}`;
       case Song.EVENT_CONTROL: return `control ${event.a}=${event.b}, chan ${event.channel}`;
-      case Song.EVENT_PROGRAM: return `program ${Midi.describePocketOrchestraProgram(event.a)}, chan ${event.channel}`;
+      case Song.EVENT_PROGRAM: return `program ${event.a}, chan ${event.channel}`;
       case Song.EVENT_PRESSURE: return `pressure ${event.a}, chan ${event.channel}`;
       case Song.EVENT_WHEEL: return `wheel ${event.wheel}, chan ${event.channel}`;
       case Song.EVENT_META: return `meta ${event.meta}, ${event.body?.byteLength} bytes`;
@@ -330,12 +330,34 @@ export class Editor {
     this.onDirty();
   }
   
-  onReformat() {
+  onResetPrograms() {
     if (!this.song) return;
     if (this.draggingEvent) return;
-    this.chartRenderer.highlightEvent = null; // just to be safe
-    this.songOperations.reformat(this.song);
+    this.chartRenderer.highlightEvent = null;
+    this.songOperations.resetPrograms(this.song);
     this.redrawLater();
     this.onDirty();
+  }
+  
+  onMergeChannels() {
+    if (!this.song) return;
+    if (this.draggingEvent) return;
+    const controller = this.dom.spawnModal(ParametersModal);
+    controller.setup("Merge Channels...", {
+      into: "number",
+      from: "number",
+    }, {
+      into: 0,
+      from: 0,
+    });
+    controller.onsubmit = (params) => {
+      if (params.into === params.from) {
+        console.log(`skipping merge because 'into' === 'from'`);
+      } else {
+        this.songOperations.mergeChannels(this.song, params);
+        this.redrawLater();
+        this.onDirty();
+      }
+    };
   }
 }

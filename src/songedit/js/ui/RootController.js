@@ -52,7 +52,8 @@ export class RootController {
     this.toolbar.onoptimize = () => this.editor.onOptimize();
     this.toolbar.onquantize = () => this.editor.onQuantize();
     this.toolbar.onzapinput = () => this.editor.onZapInput();
-    this.toolbar.onreformat = () => this.editor.onReformat();
+    this.toolbar.onresetprograms = () => this.editor.onResetPrograms();
+    this.toolbar.onmergechannels = () => this.editor.onMergeChannels();
   }
   
   /* UI events.

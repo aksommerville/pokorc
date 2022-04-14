@@ -16,6 +16,7 @@ export class ParametersModal {
     
     this.onsubmit = (model) => {};
     
+    this.inputs = null;
     this.idDiscriminator = 1;
     this.instanceDiscriminator = ParametersModal.getInstanceDiscriminator();
   }
@@ -36,6 +37,7 @@ export class ParametersModal {
    * The instance (model) is immutable to us; you'll get a fresh but similar instance back at submit.
    */
   setup(prompt, inputs, model) {
+    this.inputs = inputs;
     this.buildUi(prompt, inputs);
     this.populate(model);
   }
@@ -107,6 +109,11 @@ export class ParametersModal {
             default: model[name] = input.value;
           } break;
         case "SELECT": model[name] = input.value; break;
+      }
+      switch (this.inputs[name]) {
+        case "checkbox": model[name] = Boolean(model[name]); break;
+        case "number": model[name] = +model[name]; break;
+        case "text": model[name] = model[name]?.toString(); break;
       }
     }
     return model;

@@ -16,7 +16,6 @@ import { Encoder } from "/js/app/Encoder.js";
  *   body?: any // META,SYSEX
  *   a,b?: integer // NOTE_ON,NOTE_OFF,NOTE_ADJUST,CONTROL,PROGRAM,PRESSURE, 0..127
  *   wheel?: integer // WHEEL only, -8192..8191
- *   program?: integer // NOTE_ON only
  */
  
 export class Song {
@@ -54,7 +53,6 @@ export class Song {
       this._decodeChunk(chunkId, chunk);
     }
     this.longestEvent = this._calculateLongestEvent();
-    this._establishProgramsForNotes();
     if (!this.secondsPerQnote) {
       console.log(`No explicit tempo, assuming 500 ms/qnote`);
       this.secondsPerQnote = 0.500;
@@ -249,16 +247,6 @@ export class Song {
     return this.events.reduce((a, e) => Math.max(e.duration || 0, a), 0);
   }
   
-  _establishProgramsForNotes() {
-    const programByChannel = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    for (const event of this.events) {
-      switch (event.type) {
-        case Song.EVENT_PROGRAM: programByChannel[event.channel] = event.a; break;
-        case Song.EVENT_NOTE_ON: event.program = programByChannel[event.channel]; break;
-      }
-    }
-  }
-  
   encode() {
     const dst = new Encoder();
     this._encodeMThd(dst);
@@ -276,38 +264,12 @@ export class Song {
   }
   
   _encodeTracks(dst) {
-    this._insertProgramEvents();
     for (let i=0; i<this.trackChunkCount; i++) {
       dst.raw("MTrk");
       const p = dst.dstc;
       this._encodeTrack(dst, i);
       dst.u32belen(p);
     }
-  }
-  
-  // (event.program) is the authority. if it disagrees with a reading of the stream, insert Program Change to make it right.
-  _insertProgramEvents() {
-    const programByChannel = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    for (let i=0; i<this.events.length; i++) {
-      const event = this.events[i];
-      switch (event.type) {
-        case Song.EVENT_PROGRAM: programByChannel[event.channel] = event.a; break;
-        case Song.EVENT_NOTE_ON: {
-            if (event.program !== programByChannel[event.channel]) {
-              const newEvent = {
-                type: Song.EVENT_PROGRAM,
-                time: event.time,
-                channel: event.channel,
-                track: event.track,
-                a: event.program,
-              };
-              this.events.splice(i, 0, newEvent);
-              programByChannel[event.channel] = event.program;
-            }
-          } break;
-      }
-    }
-    
   }
   
   _encodeTrack(dst, track) {
@@ -424,9 +386,6 @@ export class Song {
     const p = this.events.indexOf(event);
     if (p < 0) return false;
     this.events.splice(p, 1);
-    if (event.type === Song.EVENT_PROGRAM) {
-      this._establishProgramsForNotes();
-    }
     return true;
   }
 }

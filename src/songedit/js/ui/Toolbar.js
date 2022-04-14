@@ -18,7 +18,8 @@ export class Toolbar {
     this.onoptimize = () => {};
     this.onquantize = () => {};
     this.onzapinput = () => {};
-    this.onreformat = () => {};
+    this.onresetprograms = () => {};
+    this.onmergechannels = () => {};
     
     this.buildUi();
   }
@@ -50,7 +51,8 @@ export class Toolbar {
     this.dom.spawn(actionSelect, "OPTION", null, { value: "optimize" }, "Optimize...");
     this.dom.spawn(actionSelect, "OPTION", null, { value: "quantize" }, "Quantize...");
     this.dom.spawn(actionSelect, "OPTION", null, { value: "zapinput" }, "Clear Inputs");
-    this.dom.spawn(actionSelect, "OPTION", null, { value: "reformat" }, "Reformat");
+    this.dom.spawn(actionSelect, "OPTION", null, { value: "resetprograms" }, "Reset Programs");
+    this.dom.spawn(actionSelect, "OPTION", null, { value: "mergechannels" }, "Merge Channels...");
     actionSelect.addEventListener("change", () => this.onAction());
   }
   
@@ -72,7 +74,8 @@ export class Toolbar {
       case "optimize": this.onoptimize(); break;
       case "quantize": this.onquantize(); break;
       case "zapinput": this.onzapinput(); break;
-      case "reformat": this.onreformat(); break;
+      case "resetprograms": this.onresetprograms(); break;
+      case "mergechannels": this.onmergechannels(); break;
     }
   }
 }
