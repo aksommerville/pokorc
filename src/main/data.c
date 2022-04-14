@@ -23,6 +23,26 @@ const struct songinfo songinfov[]={
     .dancerid=DANCER_ID_ASTRONAUT,
     .songid=3,
   },
+  /* Three slots available. We can't fit more than 6 on the menu.
+  {
+    .song=0,
+    .name="",
+    .dancerid=DANCER_ID_NONE,
+    .songid=4,
+  },
+  {
+    .song=0,
+    .name="",
+    .dancerid=DANCER_ID_NONE,
+    .songid=5,
+  },
+  {
+    .song=0,
+    .name="",
+    .dancerid=DANCER_ID_NONE,
+    .songid=6,
+  },
+  /**/
 };
 
 const uint8_t songinfoc=sizeof(songinfov)/sizeof(struct songinfo);

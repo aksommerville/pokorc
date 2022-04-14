@@ -9,6 +9,7 @@ struct image;
 
 #include <stdint.h>
 
+#define DANCER_ID_NONE      0
 #define DANCER_ID_MARY      1
 #define DANCER_ID_RACCOON   2
 #define DANCER_ID_ROBOT     3

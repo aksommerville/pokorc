@@ -9,6 +9,5 @@
 - [ ] Test the boundaries, how far off do you have to be to miss a note?
 - [ ] Eliminate redundant notes from tinylamb and goatpotion
 - [ ] More songs
-- [ ] Sort songs by difficulty.
 - [ ] Final waves
 
