@@ -37,7 +37,7 @@ static void menu_move(int8_t d) {
 
 const struct songinfo *menu_input(uint8_t input,uint8_t pvinput) {
   #define PRESS(tag) ((input&BUTTON_##tag)&&!(pvinput&BUTTON_##tag))
-  if (PRESS(A)) {
+  if (PRESS(A)||PRESS(B)) {
     //TODO sound effect?
     return songinfov+menup;
   }
