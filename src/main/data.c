@@ -23,13 +23,13 @@ const struct songinfo songinfov[]={
     .dancerid=DANCER_ID_ASTRONAUT,
     .songid=3,
   },
-  /* Three slots available. We can't fit more than 6 on the menu.
   {
-    .song=0,
-    .name="",
-    .dancerid=DANCER_ID_NONE,
+    .song=cabbages,
+    .name="Cabbages",
+    .dancerid=DANCER_ID_RACCOON,
     .songid=4,
   },
+  /* Two slots available. We can't fit more than 6 on the menu.
   {
     .song=0,
     .name="",

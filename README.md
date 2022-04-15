@@ -10,7 +10,7 @@
 - - The offset is in drivers or IO, or in your head.
 - [x] Test the boundaries, how far off do you have to be to miss a note?
 - - Exactly ten pixels. That's very generous but I think reasonable.
-- [ ] Eliminate redundant notes from tinylamb and goatpotion
+- [x] Eliminate redundant notes from tinylamb and goatpotion
 - [ ] More songs
 - [x] Final waves
 

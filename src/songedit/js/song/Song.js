@@ -306,7 +306,7 @@ export class Song {
         const off = {
           track,
           channel: event.channel,
-          time: event.time + event.duration,
+          time: event.time + (event.duration || 0),
           type: Song.EVENT_NOTE_OFF,
           a: event.a,
           b: event.offVelocity,

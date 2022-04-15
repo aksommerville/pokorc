@@ -20,11 +20,9 @@ extern const int16_t wave6[];
 extern const int16_t wave7[];
 
 extern const uint8_t inversegamma[];
-extern const uint8_t carribean[];
-extern const uint8_t goashuffle[];
 extern const uint8_t goatpotion[];
-extern const uint8_t mousechief[];
 extern const uint8_t tinylamb[];
+extern const uint8_t cabbages[];
 
 extern const struct songinfo {
   const uint8_t *song;

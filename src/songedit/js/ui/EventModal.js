@@ -229,7 +229,7 @@ export class EventModal {
   
   onInput(event) {
     const key = event.target.name;
-    const value = event.target.value;
+    const value = +event.target.value;
     if (!this.event) return;
     switch (key) {
       case "wave": console.warning("Can't change program at note level anymore"); return;
