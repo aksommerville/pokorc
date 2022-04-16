@@ -4,15 +4,13 @@
 
 - [ ] MacOS drivers
 - [ ] Windows drivers
-- [x] Are notes passing the line below the cue? Take screencaps at the moment we register a note.
-- - It feels like they're low at the cue moment.
-- - Screencaps at the moment of keypress show exactly aligned where we expected (tho i'm looking at one frame ago).
-- - The offset is in drivers or IO, or in your head.
-- [x] Test the boundaries, how far off do you have to be to miss a note?
-- - Exactly ten pixels. That's very generous but I think reasonable.
-- [x] Eliminate redundant notes from tinylamb and goatpotion
 - [ ] More songs
-- [x] Final waves
+- [ ] Can we use the USB connection to report high scores to a server?
+- - YES
+- - stty -F /dev/ttyACM0 cs8 9600 ignbrk -brkint -icrnl -imaxbel -opost -onlcr 
+- -   -isig -icanon -iexten -echo -echoe -echok -echoctl -echoke noflsh -ixon -crtscts 
+- - Then read /dev/ttyACM0 like any file on the server side.
+- - Device side, usb_send(v,c);
 
 ## Waves
 

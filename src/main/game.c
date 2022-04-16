@@ -136,10 +136,12 @@ static void finalize_score() {
     score.medal=HIGHSCORE_MEDAL_TURKEY;
   }
   
+  highscore_send(songid,score.total,score.medal);
+  
   uint8_t pvmedal=0;
   highscore_get(&highscore,&pvmedal,songid);
   if ((score.total>highscore)||(!score.total&&!highscore)) { // if it's zero, do save it (so it's not marked "unplayed")
-    fprintf(stderr,"*** new high score! %d(%d) > %d(%d)\n",score.total,score.medal,highscore,pvmedal);
+    //fprintf(stderr,"*** new high score! %d(%d) > %d(%d)\n",score.total,score.medal,highscore,pvmedal);
     highscore_set(songid,score.total,score.medal);
   }
 }

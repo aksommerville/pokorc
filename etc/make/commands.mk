@@ -23,3 +23,5 @@ ifneq (,$(TA_MENU_BIN))
     sleep 2 ; \
     $(TINY_PKGROOT)/arduino/tools/bossac/1.7.0-arduino3/bossac -i -d --port=$(TINY_PORT) -U true -i -e -w $(TA_MENU_BIN) -R
 endif
+
+scoreboard:$(TOOL_scoreboard);$(TOOL_scoreboard)

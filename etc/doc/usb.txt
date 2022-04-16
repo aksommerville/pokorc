@@ -1,0 +1,10 @@
+Pocket Orchestra USB comm protocol
+
+For use at GDEX, etc.
+I want a scoreboard server that records and displays scores from multiple attached Tinies.
+Figuring, they probably all need to be connected to USB anyway for charging, might as well do something fun with it.
+
+Server should read the stream as linewise text.
+
+EVENTS:
+  score:SONGID:SCORE:MEDAL

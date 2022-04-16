@@ -17,4 +17,9 @@
 void highscore_get(uint32_t *score,uint8_t *medal,uint16_t songid);
 void highscore_set(uint16_t songid,uint32_t score,uint8_t medal);
 
+/* Slightly different concern.
+ * Send the score to our server via USB, if possible.
+ */
+void highscore_send(uint16_t songid,uint32_t score,uint8_t medal);
+
 #endif

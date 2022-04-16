@@ -169,6 +169,40 @@ void platform_send_framebuffer(const void *fb) {
   #endif
 }
 
+/* USB stub.
+ */
+ 
+void usb_begin() {
+  fprintf(stderr,"STUB:%s\n",__func__);
+}
+
+void usb_send(const void *v,int c) {
+
+  const char *src=v;
+  int srcc=c;
+  while (srcc&&((unsigned char)src[srcc-1]<=0x20)) srcc--;
+  while (srcc&&((unsigned char)src[0]<=0x20)) { srcc--; src++; }
+  if (srcc>50) srcc=0;
+  int i=srcc; while (i-->0) {
+    if ((src[i]<0x20)||(src[i]>0x7e)) {
+      srcc=0;
+      break;
+    }
+  }
+  
+  fprintf(stderr,"STUB:%s c=%d %.*s\n",__func__,c,srcc,src);
+}
+
+int usb_read(void *dst,int dsta) {
+  fprintf(stderr,"STUB:%s\n",__func__);
+  return -1;
+}
+
+int usb_read_byte() {
+  fprintf(stderr,"STUB:%s\n",__func__);
+  return -1;
+}
+
 /* XXX print my generated waves for verification
  */
  

@@ -12,7 +12,7 @@
  */
 
 static uint16_t fbstorage[96*64];
-/*static*/ struct image fb={
+static struct image fb={
   .v=fbstorage,
   .w=96,
   .h=64,
@@ -77,8 +77,6 @@ void loop() {
       songinfo=menu_input(input,pvinput);
       if (songinfo) game_begin(songinfo,&synth,&fakesheet);
     }
-    #undef PRESS
-    #undef RELEASE
     pvinput=input;
   }
   

@@ -28,6 +28,10 @@ uint8_t platform_init();
 uint8_t platform_update();
 void platform_send_framebuffer(const void *fb);
 
+void usb_send(const void *v,int c);
+int usb_read(void *dst,int dsta);
+int usb_read_byte();
+
 /* Imaging.
  *********************************************************************/
  

@@ -1,4 +1,5 @@
 #include "highscore.h"
+#include "platform.h"
 
 #if PO_NATIVE
   #include <stdlib.h>
@@ -121,4 +122,14 @@ void highscore_set(uint16_t songid,uint32_t score,uint8_t medal) {
   src[5]=score;
   highscore_count++;
   highscore_save();
+}
+
+/* Send score to server.
+ */
+ 
+void highscore_send(uint16_t songid,uint32_t score,uint8_t medal) {
+  char msg[64];
+  int msgc=snprintf(msg,sizeof(msg),"score:%d:%d:%d\n",songid,score,medal);
+  if ((msgc<1)||(msgc>=sizeof(msg))) return;
+  usb_send(msg,msgc);
 }
