@@ -4,11 +4,13 @@
 
 - [ ] MacOS drivers
 - [ ] Windows drivers
-- [ ] More songs
-- [ ] Can we use the USB connection to report high scores to a server?
+- [ ] 2 more songs
+- [ ] At least one more dancer. Best to make a unique dancer for each song.
+- [x] Can we use the USB connection to report high scores to a server?
 - - YES
 - - stty -F /dev/ttyACM0 cs8 9600 ignbrk -brkint -icrnl -imaxbel -opost -onlcr 
 - -   -isig -icanon -iexten -echo -echoe -echok -echoctl -echoke noflsh -ixon -crtscts 
+- - ^ that doesn't appear to be necessary
 - - Then read /dev/ttyACM0 like any file on the server side.
 - - Device side, usb_send(v,c);
 
