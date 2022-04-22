@@ -38,6 +38,8 @@ extern struct genioc {
   int terminate;
   uint8_t inputstate;
   volatile int sigc;
+  int audio_skipc;
+  int16_t audio_skipv;
 } genioc;
 
 #endif

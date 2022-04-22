@@ -51,20 +51,48 @@ static int genioc_cb_x11_close(struct po_x11 *x11) {
 
 #endif
 
-static void genioc_cb_pcm(int16_t *v,int c,int chanc) {
+static void genioc_cb_pcm(int16_t *v,int c,int chanc,int driver_rate) {
   if (chanc<1) {
     memset(v,0,c<<1);
     return;
   }
   switch (chanc) {
+  
     case 1: {
-        for (;c-->0;v++) *v=audio_next();
+        if (driver_rate>=30000) {
+          // Some cases, eg HDMI out from VCS, we will always get bloody 32 kHz.
+          for (;c-->0;v++) {
+            if (genioc.audio_skipc++>=2) {
+              *v=genioc.audio_skipv;
+              genioc.audio_skipc=0;
+            } else {
+              *v=genioc.audio_skipv=audio_next();
+            }
+          }
+        } else {
+          // Normal case, assume 1:1 rates.
+          for (;c-->0;v++) *v=audio_next();
+        }
       } break;
+      
     case 2: {
         int framec=c>>1;
-        for (;framec-->1;v+=2) v[0]=v[1]=audio_next();
+        if (driver_rate>=30000) {
+          for (;framec-->0;v+=2) {
+            if (genioc.audio_skipc++>=2) {
+              v[0]=v[1]=genioc.audio_skipv;
+              genioc.audio_skipc=0;
+            } else {
+              v[0]=v[1]=genioc.audio_skipv=audio_next();
+            }
+          }
+        } else {
+          for (;framec-->1;v+=2) v[0]=v[1]=audio_next();
+        }
       } break;
+      
     default: {
+        // (chanc>2), I reckon this is unlikely to happen so not bothering with rate correction.
         int framec=c/chanc;
         for (;framec-->1;) {
           int16_t sample=audio_next();
@@ -78,7 +106,7 @@ static void genioc_cb_pcm(int16_t *v,int c,int chanc) {
 #if PO_USE_alsa
 
 static int genioc_cb_alsa(int16_t *v,int c,struct alsa *alsa) {
-  genioc_cb_pcm(v,c,alsa_get_chanc(alsa));
+  genioc_cb_pcm(v,c,alsa_get_chanc(alsa),alsa_get_rate(alsa));
   return 0;
 }
 
