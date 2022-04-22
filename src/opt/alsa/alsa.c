@@ -114,7 +114,7 @@ static int _alsa_init(struct alsa *alsa) {
   if (!alsa->delegate.device||!alsa->delegate.device[0]) {
     alsa->delegate.device="default";
   }
-  
+
   if (
     (snd_pcm_open(&alsa->alsa,alsa->delegate.device,SND_PCM_STREAM_PLAYBACK,0)<0)||
     (snd_pcm_hw_params_malloc(&alsa->hwparams)<0)||
@@ -129,6 +129,8 @@ static int _alsa_init(struct alsa *alsa) {
   
   if (snd_pcm_nonblock(alsa->alsa,0)<0) return -1;
   if (snd_pcm_prepare(alsa->alsa)<0) return -1;
+
+  fprintf(stderr,"ALSA rate=%d chanc=%d\n",alsa->delegate.rate,alsa->delegate.chanc);
 
   alsa->bufc=ALSA_BUFFER_SIZE;
   alsa->bufc_samples=alsa->bufc*alsa->delegate.chanc;

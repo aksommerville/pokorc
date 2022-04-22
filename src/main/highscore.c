@@ -71,7 +71,7 @@ static void highscore_save() {
     if (!path) return;
     int fd=open(path,O_WRONLY|O_CREAT|O_TRUNC,0666);
     if (fd<0) return;
-    write(fd,highscore_content,RECORD_SIZE*highscore_count);
+    int dummy=write(fd,highscore_content,RECORD_SIZE*highscore_count);
     close(fd);
   #else
     tinysd_write("/Pokorc/hiscore.bin",highscore_content,RECORD_SIZE*highscore_count);
