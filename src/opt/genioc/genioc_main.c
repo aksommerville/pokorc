@@ -10,6 +10,9 @@ static void genioc_quit_drivers() {
   #if PO_USE_x11
     po_x11_del(genioc.x11);
   #endif
+  #if PO_USE_drmfb
+    drmfb_del(genioc.drmfb);
+  #endif
   #if PO_USE_alsa
     alsa_del(genioc.alsa);
   #endif
@@ -98,6 +101,34 @@ static int genioc_cb_evdev(struct po_evdev *evdev,uint8_t btnid,int value) {
 
 #endif
 
+/* Init video driver.
+ */
+
+static int genioc_init_video_driver() {
+  #if PO_USE_x11
+    if (genioc.x11=po_x11_new(
+      "Pocket Orchestra",
+      96,64,0,
+      genioc_cb_x11_button,
+      genioc_cb_x11_close,
+      &genioc
+    )) {
+      fprintf(stderr,"Using X11 for video.\n");
+      return 0;
+    }
+  #endif
+  
+  #if PO_USE_drmfb
+    if (genioc.drmfb=drmfb_new(96,64,60)) {
+      fprintf(stderr,"Using DRM for video.\n");
+      return 0;
+    }
+  #endif
+  
+  fprintf(stderr,"Unable to initialize any video driver.\n");
+  return -1;
+}
+
 /* Init drivers.
  */
  
@@ -105,18 +136,7 @@ static int genioc_init_drivers() {
 
   signal(SIGINT,genioc_rcvsig);
 
-  #if PO_USE_x11
-    if (!(genioc.x11=po_x11_new(
-      "Pocket Orchestra",
-      96,64,0,
-      genioc_cb_x11_button,
-      genioc_cb_x11_close,
-      &genioc
-    ))) {
-      fprintf(stderr,"Failed to initialize X11\n");
-      return -1;
-    }
-  #endif
+  if (genioc_init_video_driver()<0) return -1;
   
   #if PO_USE_alsa
     struct alsa_delegate alsa_delegate={
@@ -152,10 +172,14 @@ uint8_t platform_init() {
  
 uint8_t platform_update() {
   #if PO_USE_x11
-    po_x11_update(genioc.x11);
+    if (genioc.x11) {
+      po_x11_update(genioc.x11);
+    }
   #endif
   #if PO_USE_evdev
-    po_evdev_update(genioc.evdev);
+    if (genioc.evdev) {
+      po_evdev_update(genioc.evdev);
+    }
   #endif
   return genioc.inputstate;
 }
@@ -165,7 +189,16 @@ uint8_t platform_update() {
  
 void platform_send_framebuffer(const void *fb) {
   #if PO_USE_x11
-    po_x11_swap(genioc.x11,fb);
+    if (genioc.x11) {
+      po_x11_swap(genioc.x11,fb);
+      return;
+    }
+  #endif
+  #if PO_USE_drmfb
+    if (genioc.drmfb) {
+      drmfb_swap(genioc.drmfb,fb);
+      return;
+    }
   #endif
 }
 
