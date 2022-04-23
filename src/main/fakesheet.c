@@ -20,7 +20,7 @@ void fakesheet_advance(struct fakesheet *fakesheet,uint32_t time_frames) {
     const uint8_t *b=fakesheet->eventv+fakesheet->eventp;
     uint32_t event=(b[0]|(b[1]<<8)|(b[2]<<16)|(b[3]<<24));
     uint32_t etime=event>>16;
-    etime*=SYNTH_FRAMES_PER_TICK;
+    etime*=fakesheet->frames_per_tick;
     if (etime>time_frames) break;
     fakesheet->eventp+=4;
     uint8_t channel=(event>>12)&0x0f;

@@ -324,7 +324,9 @@ static void clearWindow(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
 /* Initialize.
  */
  
-uint8_t platform_init() {
+uint8_t platform_init(int32_t *audio_rate) {
+
+  *audio_rate=AUDIO_RATE;
 
   Wire_begin();
   usb_begin();

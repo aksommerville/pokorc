@@ -9,8 +9,6 @@
 /* Object definition.
  */
 
-#define ALSA_BUFFER_SIZE 1024
-
 struct alsa {
   struct alsa_delegate delegate;
   int refc;
@@ -92,7 +90,7 @@ static void *_alsa_iothd(void *dummy) {
         }
         break;
       }
-      samplep+=err;
+      samplep+=err*alsa->delegate.chanc;
     }
   }
   return 0;
@@ -114,6 +112,18 @@ static int _alsa_init(struct alsa *alsa) {
   if (!alsa->delegate.device||!alsa->delegate.device[0]) {
     alsa->delegate.device="default";
   }
+  
+  // Ideally, our buffer size is just under one video frame.
+  // If it's larger, the visible notes will skip a little. (it's not that big a deal).
+  // Experimentally at higher rates (about 40 kHz and up), we get noise and need a slighly larger buffer.
+  // So targetting 30 Hz instead of 60. You can change this 30 to 60 for smoother animation, if it sounds ok great.
+  int buffer_size_limit=alsa->delegate.rate/30;
+  int buffer_size=256;
+  while (1) {
+    int next_size=buffer_size<<1;
+    if (next_size>=buffer_size_limit) break;
+    buffer_size=next_size;
+  }
 
   if (
     (snd_pcm_open(&alsa->alsa,alsa->delegate.device,SND_PCM_STREAM_PLAYBACK,0)<0)||
@@ -123,16 +133,14 @@ static int _alsa_init(struct alsa *alsa) {
     (snd_pcm_hw_params_set_format(alsa->alsa,alsa->hwparams,SND_PCM_FORMAT_S16)<0)||
     (snd_pcm_hw_params_set_rate_near(alsa->alsa,alsa->hwparams,&alsa->delegate.rate,0)<0)||
     (snd_pcm_hw_params_set_channels_near(alsa->alsa,alsa->hwparams,&alsa->delegate.chanc)<0)||
-    (snd_pcm_hw_params_set_buffer_size(alsa->alsa,alsa->hwparams,ALSA_BUFFER_SIZE)<0)||
+    (snd_pcm_hw_params_set_buffer_size(alsa->alsa,alsa->hwparams,buffer_size)<0)||
     (snd_pcm_hw_params(alsa->alsa,alsa->hwparams)<0)
   ) return -1;
   
   if (snd_pcm_nonblock(alsa->alsa,0)<0) return -1;
   if (snd_pcm_prepare(alsa->alsa)<0) return -1;
 
-  fprintf(stderr,"ALSA rate=%d chanc=%d\n",alsa->delegate.rate,alsa->delegate.chanc);
-
-  alsa->bufc=ALSA_BUFFER_SIZE;
+  alsa->bufc=buffer_size;
   alsa->bufc_samples=alsa->bufc*alsa->delegate.chanc;
   if (!(alsa->buf=malloc(alsa->bufc_samples*2))) return -1;
 

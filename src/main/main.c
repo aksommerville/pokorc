@@ -94,7 +94,11 @@ void loop() {
  */
 
 void setup() {
-  platform_init();
+
+  int32_t audio_rate=0;
+  platform_init(&audio_rate);
+  synth_init(&synth,audio_rate);
+  fakesheet.frames_per_tick=synth.frames_per_tick;
   
   synth.wavev[0]=wave0;
   synth.wavev[1]=wave1;

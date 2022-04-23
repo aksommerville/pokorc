@@ -29,6 +29,8 @@ static uint32_t lastsongtime=0;
 static uint32_t beatc=0;
 static uint32_t song_ticks_per_beat=0; // from binary
 static uint32_t song_frames_per_beat=11025; // calculated here
+static int32_t peek_time_frames=22050; // from synth
+static int32_t drop_time_frames=11025; // ''
 
 static struct {
   uint8_t waveid;
@@ -162,9 +164,6 @@ static uint8_t calculate_score_quality() {
 
 /* Notes
  */
- 
-#define PEEK_TIME_FRAMES (22050*1)
-#define DROP_TIME_FRAMES 11025
 
 static void init_notes() {
   struct note *note=notev;
@@ -215,10 +214,13 @@ void game_begin(
   const uint8_t *hdr=songinfo->song;
   song_frames_per_beat=hdr[0]|(hdr[1]<<8);
   if (!song_frames_per_beat) {
-    fprintf(stderr,"%s:%d:%s: frames/beat zero! Defaulting to 11025\n",__FILE__,__LINE__,songinfo->name);
-    song_frames_per_beat=11025;
+    fprintf(stderr,"%s:%d:%s: frames/beat zero! Defaulting to rate/2\n",__FILE__,__LINE__,songinfo->name);
+    song_frames_per_beat=synth->rate>>1;
   } else {
-    fprintf(stderr,"%s:%d:%s: song_frames_per_beat=%d\n",__FILE__,__LINE__,songinfo->name,song_frames_per_beat);
+    // Tempo is encoded in song against a reference rate of 22050 Hz. No big deal:
+    if (synth->rate!=22050) song_frames_per_beat=(song_frames_per_beat*synth->rate)/22050;
+    if (song_frames_per_beat<1) song_frames_per_beat=1;
+    //fprintf(stderr,"%s:%d:%s: song_frames_per_beat=%d\n",__FILE__,__LINE__,songinfo->name,song_frames_per_beat);
   }
   beatc=0;
   const uint16_t hdrlen=8;
@@ -228,11 +230,14 @@ void game_begin(
   
   synth->song=songinfo->song+hdrlen+addlhdrlen;
   synth->songc=songlen;
-  synth->songhold=22050;
+  synth->songhold=synth->rate;
   
   fakesheet->cb_event=cb_fakesheet_event;
   fakesheet->eventv=songinfo->song+hdrlen+addlhdrlen+songlen;
   fakesheet->eventc=fakesheetlen;
+  
+  peek_time_frames=synth->rate;
+  drop_time_frames=synth->rate>>1;
   
   init_notes();
   dancer_init(songinfo->dancerid);
@@ -259,7 +264,7 @@ static void reposition_notes(int32_t now) {
     if (note->col>=5) continue;
     int32_t reltime=note->time-now;
     
-    if (reltime<-DROP_TIME_FRAMES) {
+    if (reltime<-drop_time_frames) {
       if (!note->scored) {
         score_overlook(note->col);
       }
@@ -267,12 +272,12 @@ static void reposition_notes(int32_t now) {
       continue;
     }
     
-    if (reltime>=PEEK_TIME_FRAMES) {
+    if (reltime>=peek_time_frames) {
       note->y=-10;
       continue;
     }
     
-    note->y=52-(reltime*62)/PEEK_TIME_FRAMES;
+    note->y=52-(reltime*62)/peek_time_frames;
   }
 }
 
@@ -294,14 +299,14 @@ static void update_notes() {
   }
   lastsongtime=synth->songtime;
   if (synth->songhold) {
-    if (synth->songhold<PEEK_TIME_FRAMES) {
-      fakesheet_advance(fakesheet,PEEK_TIME_FRAMES-synth->songhold);
+    if (synth->songhold<peek_time_frames) {
+      fakesheet_advance(fakesheet,peek_time_frames-synth->songhold);
     }
   } else {
-    fakesheet_advance(fakesheet,synth->songtime+PEEK_TIME_FRAMES);
+    fakesheet_advance(fakesheet,synth->songtime+peek_time_frames);
   }
   
-  if (synth->songhold<PEEK_TIME_FRAMES) {
+  if (synth->songhold<peek_time_frames) {
     reposition_notes(synth->songtime-synth->songhold);
   }
 }

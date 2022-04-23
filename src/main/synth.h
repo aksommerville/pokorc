@@ -9,7 +9,6 @@
 #define SYNTH_VOICE_LIMIT 8
 #define SYNTH_WAVE_COUNT 8
 #define SYNTH_TICKS_PER_SECOND 96 /* approximately */
-#define SYNTH_FRAMES_PER_TICK 230 /* yields 95.87 hz with main rate 22050 */
 
 #define SYNTH_P_SHIFT (32-9)
 
@@ -32,7 +31,16 @@ struct synth {
   uint16_t songp;
   uint32_t songdelay;
   uint32_t songtime; // frames since start
+  
+  int32_t frames_per_tick;
+  int32_t rate;
+  int32_t release_time;
 };
+
+/* Beware, if you initialize more than once with different rates,
+ * rounding error will accumulate and gradually detune the notes.
+ */
+int8_t synth_init(struct synth *synth,int32_t rate);
 
 int16_t synth_update(struct synth *synth);
 

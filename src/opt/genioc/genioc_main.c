@@ -59,42 +59,18 @@ static void genioc_cb_pcm(int16_t *v,int c,int chanc,int driver_rate) {
   switch (chanc) {
   
     case 1: {
-        if (driver_rate>=30000) {
-          // Some cases, eg HDMI out from VCS, we will always get bloody 32 kHz.
-          for (;c-->0;v++) {
-            if (genioc.audio_skipc++>=2) {
-              *v=genioc.audio_skipv;
-              genioc.audio_skipc=0;
-            } else {
-              *v=genioc.audio_skipv=audio_next();
-            }
-          }
-        } else {
-          // Normal case, assume 1:1 rates.
-          for (;c-->0;v++) *v=audio_next();
-        }
+        for (;c-->0;v++) *v=audio_next();
       } break;
       
     case 2: {
         int framec=c>>1;
-        if (driver_rate>=30000) {
-          for (;framec-->0;v+=2) {
-            if (genioc.audio_skipc++>=2) {
-              v[0]=v[1]=genioc.audio_skipv;
-              genioc.audio_skipc=0;
-            } else {
-              v[0]=v[1]=genioc.audio_skipv=audio_next();
-            }
-          }
-        } else {
-          for (;framec-->1;v+=2) v[0]=v[1]=audio_next();
-        }
+        for (;framec-->0;v+=2) v[0]=v[1]=audio_next();
       } break;
       
     default: {
         // (chanc>2), I reckon this is unlikely to happen so not bothering with rate correction.
         int framec=c/chanc;
-        for (;framec-->1;) {
+        for (;framec-->0;) {
           int16_t sample=audio_next();
           int i=chanc;
           for (;i-->0;v++) *v=sample;
@@ -157,6 +133,27 @@ static int genioc_init_video_driver() {
   return -1;
 }
 
+/* Init audio driver.
+ */
+ 
+static int genioc_init_audio_driver() {
+  #if PO_USE_alsa
+    struct alsa_delegate alsa_delegate={
+      .rate=22050,
+      .chanc=1,
+      .device=0,
+      .cb_pcm_out=genioc_cb_alsa,
+    };
+    if (genioc.alsa=alsa_new(&alsa_delegate)) {
+      fprintf(stderr,"Using ALSA for audio. rate=%d chanc=%d\n",alsa_get_rate(genioc.alsa),alsa_get_chanc(genioc.alsa));
+      return 0;
+    }
+  #endif
+  
+  fprintf(stderr,"Unable to initialize any audio driver.\n");
+  return -1;
+}
+
 /* Init drivers.
  */
  
@@ -165,19 +162,7 @@ static int genioc_init_drivers() {
   signal(SIGINT,genioc_rcvsig);
 
   if (genioc_init_video_driver()<0) return -1;
-  
-  #if PO_USE_alsa
-    struct alsa_delegate alsa_delegate={
-      .rate=22050,
-      .chanc=1,
-      .device=0,
-      .cb_pcm_out=genioc_cb_alsa,
-    };
-    if (!(genioc.alsa=alsa_new(&alsa_delegate))) {
-      fprintf(stderr,"Failed to initialize ALSA\n");
-      return -1;
-    }
-  #endif
+  if (genioc_init_audio_driver()<0) return -1;
   
   #if PO_USE_evdev
     if (!(genioc.evdev=po_evdev_new(genioc_cb_evdev,&genioc))) {
@@ -191,7 +176,14 @@ static int genioc_init_drivers() {
 /* Init per client (noop).
  */
  
-uint8_t platform_init() {
+uint8_t platform_init(int32_t *audio_rate) {
+
+  if (0) ;
+  #if PO_USE_alsa
+    else if (genioc.alsa) *audio_rate=alsa_get_rate(genioc.alsa);
+  #endif
+  else *audio_rate=0;
+  
   return 1;
 }
 

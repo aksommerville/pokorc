@@ -24,7 +24,7 @@ int16_t audio_next();
 /* Provided by driver.
  *********************************************************************/
  
-uint8_t platform_init();
+uint8_t platform_init(int32_t *audio_rate);
 uint8_t platform_update();
 void platform_send_framebuffer(const void *fb);
 
