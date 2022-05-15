@@ -117,7 +117,7 @@ static int _alsa_init(struct alsa *alsa) {
   // If it's larger, the visible notes will skip a little. (it's not that big a deal).
   // Experimentally at higher rates (about 40 kHz and up), we get noise and need a slighly larger buffer.
   // So targetting 30 Hz instead of 60. You can change this 30 to 60 for smoother animation, if it sounds ok great.
-  int buffer_size_limit=alsa->delegate.rate/30;
+  int buffer_size_limit=alsa->delegate.rate/60;
   int buffer_size=256;
   while (1) {
     int next_size=buffer_size<<1;
