@@ -23,6 +23,8 @@ extern const uint8_t inversegamma[];
 extern const uint8_t goatpotion[];
 extern const uint8_t tinylamb[];
 extern const uint8_t cabbages[];
+extern const uint8_t cobweb[];
+extern const uint8_t elfonahill[];
 
 extern const struct songinfo {
   const uint8_t *song;

@@ -29,20 +29,18 @@ const struct songinfo songinfov[]={
     .dancerid=DANCER_ID_RACCOON,
     .songid=4,
   },
-  /* Two slots available. We can't fit more than 6 on the menu.
   {
-    .song=0,
-    .name="",
-    .dancerid=DANCER_ID_NONE,
+    .song=cobweb,
+    .name="Cobweb",
+    .dancerid=DANCER_ID_RACCOON,//TODO something spooky
     .songid=5,
   },
   {
-    .song=0,
-    .name="",
-    .dancerid=DANCER_ID_NONE,
+    .song=elfonahill,
+    .name="Elf on a Hill",
+    .dancerid=DANCER_ID_RACCOON,//TODO elf
     .songid=6,
   },
-  /**/
 };
 
 const uint8_t songinfoc=sizeof(songinfov)/sizeof(struct songinfo);
