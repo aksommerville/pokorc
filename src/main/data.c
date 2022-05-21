@@ -38,7 +38,7 @@ const struct songinfo songinfov[]={
   {
     .song=cobweb,
     .name="Cobweb",
-    .dancerid=DANCER_ID_RACCOON,//TODO
+    .dancerid=DANCER_ID_GHOST,
     .songid=5,
   },
 };

@@ -298,6 +298,30 @@ static void elf_update(
   }
 }
 
+/* Ghost.
+ */
+ 
+static void ghost_init() {
+}
+
+static void ghost_update(
+  struct image *dst,
+  uint32_t timep,uint32_t timec,
+  uint32_t beatp,
+  uint8_t quality
+) {
+  int frame;
+  if ((timec<=1)||(quality<1)) {
+    frame=0;
+  } else {
+    frame=(beatp&1)<<1;
+    if (timep>=timec>>1) frame++;
+  }
+  
+  // Body.
+  image_blit_colorkey(dst,0,0,&dancer,frame*24,68,24,24);
+}
+
 /* Dispatch.
  */
  
@@ -327,5 +351,6 @@ void dancer_update(
     case DANCER_ID_ROBOT: robot_update(dst,timep,timec,beatp,quality); break;
     case DANCER_ID_ASTRONAUT: astronaut_update(dst,timep,timec,beatp,quality); break;
     case DANCER_ID_ELF: elf_update(dst,timep,timec,beatp,quality,notec); break;
+    case DANCER_ID_GHOST: ghost_update(dst,timep,timec,beatp,quality); break;
   }
 }

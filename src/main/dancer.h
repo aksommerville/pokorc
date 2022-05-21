@@ -15,6 +15,7 @@ struct image;
 #define DANCER_ID_ROBOT     3
 #define DANCER_ID_ASTRONAUT 4
 #define DANCER_ID_ELF       5
+#define DANCER_ID_GHOST     6
 
 void dancer_init(uint8_t dancerid);
 
