@@ -14,6 +14,7 @@ struct image;
 #define DANCER_ID_RACCOON   2
 #define DANCER_ID_ROBOT     3
 #define DANCER_ID_ASTRONAUT 4
+#define DANCER_ID_ELF       5
 
 void dancer_init(uint8_t dancerid);
 
@@ -21,12 +22,14 @@ void dancer_init(uint8_t dancerid);
  * (timep) should be in (0..timec-1), our position within the beat.
  * (beatp) is how many beats elapsed.
  * (quality) comes mostly from the running combo: 0..4
+ * (notec) how many user-generate notes in flight right now.
  */
 void dancer_update(
   struct image *dst,
   uint32_t timep,uint32_t timec,
   uint32_t beatp,
-  uint8_t quality
+  uint8_t quality,
+  uint8_t notec
 );
 
 #endif

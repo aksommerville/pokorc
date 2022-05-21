@@ -53,6 +53,34 @@ void image_blit_colorkey(
   }
 }
 
+/* Blit with colorkey, reversing the X axis.
+ */
+ 
+void image_blit_colorkey_flop(
+  struct image *dst,int16_t dstx,int16_t dsty,
+  const struct image *src,int16_t srcx,int16_t srcy,
+  int16_t w,int16_t h
+) {
+  if (!dst||!src) return;
+  if (dstx<0) { w+=dstx; dstx=0; }
+  if (dsty<0) { srcy-=dsty; h+=dsty; dsty=0; }
+  if (dstx>dst->w-w) { srcx+=dstx+w-dst->w; w=dst->w-dstx; }
+  if (dsty>dst->h-h) h=dst->h-dsty;
+  if ((w<1)||(h<1)) return;
+  
+  uint16_t *dstrow=dst->v+dsty*dst->stride+dstx;
+  const uint16_t *srcrow=src->v+srcy*src->stride+srcx+w-1;
+  int yi=h;
+  for (;yi-->0;dstrow+=dst->stride,srcrow+=src->stride) {
+    uint16_t *dstp=dstrow;
+    const uint16_t *srcp=srcrow;
+    int xi=w;
+    for (;xi-->0;dstp++,srcp--) {
+      if (*srcp) *dstp=*srcp;
+    }
+  }
+}
+
 /* Blit from 1-bit glyph.
  */
  

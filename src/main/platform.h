@@ -53,6 +53,11 @@ void image_blit_colorkey(
   const struct image *src,int16_t srcx,int16_t srcy,
   int16_t w,int16_t h
 );
+void image_blit_colorkey_flop(
+  struct image *dst,int16_t dstx,int16_t dsty,
+  const struct image *src,int16_t srcx,int16_t srcy,
+  int16_t w,int16_t h
+);
 
 /* See etc/doc/font.txt for details about the format.
  * Blit one glyph, top-left corner at (dstx,dsty).

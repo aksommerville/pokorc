@@ -26,7 +26,7 @@ const struct songinfo songinfov[]={
   {
     .song=elfonahill,
     .name="Elf on a Hill",
-    .dancerid=DANCER_ID_RACCOON,//TODO
+    .dancerid=DANCER_ID_ELF,
     .songid=6,
   },
   {

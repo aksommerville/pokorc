@@ -246,6 +246,58 @@ static void astronaut_update(
   }
 }
 
+/* Elf.
+ */
+ 
+static void elf_init() {
+}
+
+static void elf_update(
+  struct image *dst,
+  uint32_t timep,uint32_t timec,
+  uint32_t beatp,
+  uint8_t quality,
+  uint8_t notec
+) {
+  int frame;
+  if ((timec<=1)||(quality<1)) {
+    frame=0;
+  } else {
+    frame=(beatp&1)<<1;
+    if (timep>=timec>>1) frame++;
+  }
+  
+  // Toot instead.
+  if (quality>=3) {
+    image_blit_colorkey(dst,3,1,&dancer,0,46,12,11);
+    switch (frame) {
+      case 0:
+      case 2: image_blit_colorkey(dst,4,10,&dancer,42,55,14,13); break;
+      case 1: image_blit_colorkey(dst,4,10,&dancer,56,55,14,13); break;
+      case 3: image_blit_colorkey(dst,4,10,&dancer,70,55,14,13); break;
+    }
+    if (notec) {
+      image_blit_colorkey(dst,18,9,&dancer,18,46,4,7);
+    }
+    return;
+  }
+  
+  // Head.
+  if (frame>=2) {
+    image_blit_colorkey_flop(dst,7,1,&dancer,0,46,12,11);
+  } else {
+    image_blit_colorkey(dst,3,1,&dancer,0,46,12,11);
+  }
+  
+  // Body.
+  switch (frame) {
+    case 0:
+    case 2: image_blit_colorkey(dst,4,12,&dancer,0,57,14,11); break;
+    case 1: image_blit_colorkey(dst,4,8,&dancer,14,53,14,15); break;
+    case 3: image_blit_colorkey(dst,4,8,&dancer,28,53,14,15); break;
+  }
+}
+
 /* Dispatch.
  */
  
@@ -256,6 +308,7 @@ void dancer_init(uint8_t _dancerid) {
     case DANCER_ID_RACCOON: raccoon_init(); break;
     case DANCER_ID_ROBOT: robot_init(); break;
     case DANCER_ID_ASTRONAUT: astronaut_init(); break;
+    case DANCER_ID_ELF: elf_init(); break;
   }
 }
  
@@ -263,7 +316,8 @@ void dancer_update(
   struct image *dst,
   uint32_t timep,uint32_t timec,
   uint32_t beatp,
-  uint8_t quality
+  uint8_t quality,
+  uint8_t notec
 ) {
   if (!timec) timec=1;
   if (timep>=timec) timep=0;
@@ -272,5 +326,6 @@ void dancer_update(
     case DANCER_ID_RACCOON: raccoon_update(dst,timep,timec,beatp,quality); break;
     case DANCER_ID_ROBOT: robot_update(dst,timep,timec,beatp,quality); break;
     case DANCER_ID_ASTRONAUT: astronaut_update(dst,timep,timec,beatp,quality); break;
+    case DANCER_ID_ELF: elf_update(dst,timep,timec,beatp,quality,notec); break;
   }
 }
