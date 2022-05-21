@@ -12,10 +12,22 @@ const struct songinfo songinfov[]={
     .songid=1,
   },
   {
+    .song=cabbages,
+    .name="Cabbages",
+    .dancerid=DANCER_ID_RACCOON,//TODO
+    .songid=4,
+  },
+  {
     .song=goatpotion,
     .name="Goat Potion",
     .dancerid=DANCER_ID_RACCOON,
     .songid=2,
+  },
+  {
+    .song=elfonahill,
+    .name="Elf on a Hill",
+    .dancerid=DANCER_ID_RACCOON,//TODO
+    .songid=6,
   },
   {
     .song=inversegamma,
@@ -24,22 +36,10 @@ const struct songinfo songinfov[]={
     .songid=3,
   },
   {
-    .song=cabbages,
-    .name="Cabbages",
-    .dancerid=DANCER_ID_RACCOON,
-    .songid=4,
-  },
-  {
     .song=cobweb,
     .name="Cobweb",
-    .dancerid=DANCER_ID_RACCOON,//TODO something spooky
+    .dancerid=DANCER_ID_RACCOON,//TODO
     .songid=5,
-  },
-  {
-    .song=elfonahill,
-    .name="Elf on a Hill",
-    .dancerid=DANCER_ID_RACCOON,//TODO elf
-    .songid=6,
   },
 };
 

@@ -41,6 +41,8 @@ int fiddle_drivers_init() {
       inotify_scan(fiddle.inotify);
     }
   #endif
+  
+  synth_init(&fiddle.synth,fiddle.rate);
 
   return 0;
 }

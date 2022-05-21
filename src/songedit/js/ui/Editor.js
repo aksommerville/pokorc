@@ -334,9 +334,35 @@ export class Editor {
     if (!this.song) return;
     if (this.draggingEvent) return;
     this.chartRenderer.highlightEvent = null;
-    this.songOperations.resetPrograms(this.song);
-    this.redrawLater();
-    this.onDirty();
+    const controller = this.dom.spawnModal(ParametersModal);
+    controller.setup("Reset Programs...", {
+      "Channel 0": "number",
+      "Channel 1": "number",
+      "Channel 2": "number",
+      "Channel 3": "number",
+      "Channel 4": "number",
+      "Channel 5": "number",
+      "Channel 6": "number",
+      "Channel 7": "number",
+      "Channel 8": "number",
+      "Channel 9": "number",
+      "Channel 10": "number",
+      "Channel 11": "number",
+      "Channel 12": "number",
+      "Channel 13": "number",
+      "Channel 14": "number",
+      "Channel 15": "number",
+    });
+    controller.onsubmit = (params) => {
+      const programByChannel = [];
+      for (let chid=0; chid<16; chid++) {
+        const program = +params[`Channel ${chid}`] || 0;
+        programByChannel.push(program);
+      }
+      this.songOperations.resetPrograms(this.song, programByChannel);
+      this.redrawLater();
+      this.onDirty();
+    };
   }
   
   onMergeChannels() {

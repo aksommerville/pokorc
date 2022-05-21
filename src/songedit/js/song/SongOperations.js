@@ -45,7 +45,9 @@ export class SongOperations {
     }
   }
   
-  resetPrograms(song) {
+  /* programByChannel is an optional array of 16 program ids.
+   */
+  resetPrograms(song, programByChannel) {
     // Eliminate all Program Change events in place, and record which channels have notes.
     const channelsWithNotes = [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false];
     for (let i=song.events.length; i-->0; ) {
@@ -65,7 +67,7 @@ export class SongOperations {
         time: 0,
         track,
         channel: chid,
-        a: 0,
+        a: (programByChannel && programByChannel[chid]) || 0,
       });
     }
   }
