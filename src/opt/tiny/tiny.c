@@ -397,3 +397,8 @@ void platform_send_framebuffer(const void *fb) {
   }
   endTransfer();
 }
+
+int audio_estimate_buffered_frame_count() {
+  // We update the synthesizer one frame at a time; this can always be zero.
+  return 0;
+}

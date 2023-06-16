@@ -32,6 +32,8 @@ void usb_send(const void *v,int c);
 int usb_read(void *dst,int dsta);
 int usb_read_byte();
 
+int audio_estimate_buffered_frame_count();
+
 /* Imaging.
  *********************************************************************/
  

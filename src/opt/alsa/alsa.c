@@ -3,8 +3,15 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <pthread.h>
+#include <sys/time.h>
 #include <sys/poll.h>
 #include <alsa/asoundlib.h>
+
+static int64_t alsa_now() {
+  struct timeval tv={0};
+  gettimeofday(&tv,0);
+  return (int64_t)tv.tv_sec*1000000+tv.tv_usec;
+}
 
 /* Object definition.
  */
@@ -26,6 +33,8 @@ struct alsa {
   pthread_mutex_t iomtx;
   int ioabort;
   int cberror;
+
+  int64_t update_time;
 };
 
 /* Delete.
@@ -76,6 +85,7 @@ static void *_alsa_iothd(void *dummy) {
     alsa->delegate.cb_pcm_out(alsa->buf,alsa->bufc_samples,alsa);
     pthread_mutex_unlock(&alsa->iomtx);
     if (alsa->ioabort) return 0;
+    alsa->update_time=alsa_now();
 
     int16_t *samplev=alsa->buf;
     int samplep=0,samplec=alsa->bufc;
@@ -124,6 +134,11 @@ static int _alsa_init(struct alsa *alsa) {
     if (next_size>=buffer_size_limit) break;
     buffer_size=next_size;
   }
+  #if PO_USE_bcm
+    // Overriding the above buffer calculation, for Pi only.
+    // But I've also added buffer-position estimation, so the above shouldn't really be necessary elsewhere; use a larger buffer.
+    buffer_size=2048;
+  #endif
 
   if (
     (snd_pcm_open(&alsa->alsa,alsa->delegate.device,SND_PCM_STREAM_PLAYBACK,0)<0)||
@@ -242,4 +257,19 @@ int alsa_update(struct alsa *alsa) {
     }
   }
   return 0;
+}
+
+/* Buffered frames outstanding.
+ */
+
+int alsa_estimate_buffered_frame_count(struct alsa *alsa) {
+  if (alsa->update_time<1) return 0;
+  int64_t now=alsa_now();
+  int64_t elapsedus=now-alsa->update_time;
+  int64_t uspercycle=(alsa->bufc*1000000ll)/alsa->delegate.rate;
+  if (uspercycle<1) return 0;
+  int doneframec=(elapsedus*alsa->bufc)/uspercycle;
+  if (doneframec<1) return alsa->bufc;
+  if (doneframec>=alsa->bufc) return 0;
+  return alsa->bufc-doneframec;
 }

@@ -13,6 +13,9 @@ static void genioc_quit_drivers() {
   #if PO_USE_drmfb
     drmfb_del(genioc.drmfb);
   #endif
+  #if PO_USE_bcm
+    bcm_del(genioc.bcm);
+  #endif
   #if PO_USE_alsa
     alsa_del(genioc.alsa);
   #endif
@@ -128,6 +131,13 @@ static int genioc_init_video_driver() {
       return 0;
     }
   #endif
+
+  #if PO_USE_bcm
+    if (genioc.bcm=bcm_new(96,64)) {
+      fprintf(stderr,"Using BCM for video.\n");
+      return 0;
+    }
+  #endif
   
   fprintf(stderr,"Unable to initialize any video driver.\n");
   return -1;
@@ -220,6 +230,12 @@ void platform_send_framebuffer(const void *fb) {
       return;
     }
   #endif
+  #if PO_USE_bcm
+    if (genioc.bcm) {
+      bcm_swap(genioc.bcm,fb);
+      return;
+    }
+  #endif
 }
 
 /* USB stub.
@@ -254,6 +270,16 @@ int usb_read(void *dst,int dsta) {
 int usb_read_byte() {
   fprintf(stderr,"STUB:%s\n",__func__);
   return -1;
+}
+
+/* Audio buffer position.
+ */
+
+int audio_estimate_buffered_frame_count() {
+  #if PO_USE_alsa
+    if (genioc.alsa) return alsa_estimate_buffered_frame_count(genioc.alsa);
+  #endif
+  return 0;
 }
 
 /* XXX print my generated waves for verification

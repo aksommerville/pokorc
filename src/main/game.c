@@ -293,21 +293,23 @@ static void update_notes() {
   }
   
   // Advance fakesheet to the song's time, plus our view window length. May create new notes.
-  if (synth->songtime<lastsongtime) {
+  uint32_t songtime=synth->songtime;
+  songtime-=audio_estimate_buffered_frame_count();
+  if (songtime<lastsongtime) {
     fakesheet_reset(fakesheet);
     drop_all_notes();
   }
-  lastsongtime=synth->songtime;
+  lastsongtime=songtime;
   if (synth->songhold) {
     if (synth->songhold<peek_time_frames) {
       fakesheet_advance(fakesheet,peek_time_frames-synth->songhold);
     }
   } else {
-    fakesheet_advance(fakesheet,synth->songtime+peek_time_frames);
+    fakesheet_advance(fakesheet,songtime+peek_time_frames);
   }
   
   if (synth->songhold<peek_time_frames) {
-    reposition_notes(synth->songtime-synth->songhold);
+    reposition_notes(songtime-synth->songhold);
   }
 }
 
@@ -424,7 +426,7 @@ uint8_t game_input(uint8_t _input,uint8_t pvinput) {
  
 void game_update() {
   if (synth->song) {
-    beatc=synth->songtime/song_frames_per_beat;
+    beatc=(synth->songtime-audio_estimate_buffered_frame_count())/song_frames_per_beat;
     update_notes();
     update_toasts();
   } else if (complete) {

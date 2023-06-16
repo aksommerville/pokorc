@@ -45,4 +45,6 @@ int alsa_get_status(const struct alsa *alsa); // => 0,-1
 // No harm either way, but only necessary if you're using MIDI in.
 int alsa_update(struct alsa *alsa);
 
+int alsa_estimate_buffered_frame_count(struct alsa *alsa);
+
 #endif
