@@ -110,12 +110,14 @@ static int genioc_cb_evdev(struct po_evdev *evdev,uint8_t btnid,int value) {
 
 /* Init video driver.
  */
+ 
+#define FULLSCREEN_INITIALLY 1
 
 static int genioc_init_video_driver() {
   #if PO_USE_x11
     if (genioc.x11=po_x11_new(
       "Pocket Orchestra",
-      96,64,0,
+      96,64,FULLSCREEN_INITIALLY,
       genioc_cb_x11_button,
       genioc_cb_x11_close,
       &genioc

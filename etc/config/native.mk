@@ -1,7 +1,7 @@
 # native.mk
 # Rules for building the game for your PC.
 
-PO_NATIVE_PLATFORM:=raspi
+PO_NATIVE_PLATFORM:=linux
 
 ifeq ($(PO_NATIVE_PLATFORM),linux) #-----------------------------------------------
 
