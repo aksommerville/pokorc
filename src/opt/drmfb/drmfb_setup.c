@@ -198,7 +198,7 @@ static int drmfb_init_with_res(
  
 int drmfb_init_connection(struct drmfb *drmfb) {
 
-  const char *path="/dev/dri/card0";//TODO Let client supply this, or scan /dev/dri/
+  const char *path="/dev/dri/card1";//TODO Let client supply this, or scan /dev/dri/
   
   if ((drmfb->fd=open(path,O_RDWR))<0) {
     fprintf(stderr,"%s: Failed to open DRM device: %m\n",path);
