@@ -123,22 +123,7 @@ static int _alsa_init(struct alsa *alsa) {
     alsa->delegate.device="default";
   }
   
-  // Ideally, our buffer size is just under one video frame.
-  // If it's larger, the visible notes will skip a little. (it's not that big a deal).
-  // Experimentally at higher rates (about 40 kHz and up), we get noise and need a slighly larger buffer.
-  // So targetting 30 Hz instead of 60. You can change this 30 to 60 for smoother animation, if it sounds ok great.
-  int buffer_size_limit=alsa->delegate.rate/30;
-  int buffer_size=256;
-  while (1) {
-    int next_size=buffer_size<<1;
-    if (next_size>=buffer_size_limit) break;
-    buffer_size=next_size;
-  }
-  #if PO_USE_bcm
-    // Overriding the above buffer calculation, for Pi only.
-    // But I've also added buffer-position estimation, so the above shouldn't really be necessary elsewhere; use a larger buffer.
-    buffer_size=2048;
-  #endif
+  int buffer_size=2048;
 
   if (
     (snd_pcm_open(&alsa->alsa,alsa->delegate.device,SND_PCM_STREAM_PLAYBACK,0)<0)||

@@ -2,9 +2,10 @@
 # Rules for building the game for your PC.
 
 UNAMESMN:=$(shell uname -smn)
-ifeq ($(UNAMESMN),Linux aarch64 raspberrypi)
+ifeq ($(UNAMESMN),Linux raspberrypi aarch64)
   # Pi 4. Use DRM only.
   PO_NATIVE_PLATFORM:=linuxguiless
+  RUNARGS:=--video-device=/dev/dri/card1
 else ifneq (,$(strip $(filter raspberrypi,$(UNAMESMN))))
   # Other Pi. Use BCM only.
   PO_NATIVE_PLATFORM:=raspi
@@ -34,6 +35,7 @@ else ifeq ($(PO_NATIVE_PLATFORM),linuxguiless) #--------------------------------
   LD_NATIVE:=gcc
   LDPOST_NATIVE:=-lm -lz -lasound -lpthread -ldrm -lEGL -lgbm -lGLESv2
   OPT_ENABLE_NATIVE:=genioc alsa drmgx evdev
+  OPT_ENABLE_TOOL:=alsa ossmidi inotify
   EXE_NATIVE:=out/native/pokorc
 
 else ifeq ($(PO_NATIVE_PLATFORM),raspi) #-----------------------------------------
