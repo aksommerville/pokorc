@@ -15,6 +15,9 @@
 #if PO_USE_drmfb
   #include "opt/drmfb/drmfb.h"
 #endif
+#if PO_USE_drmgx
+  #include "opt/drmgx/drmgx.h"
+#endif
 #if PO_USE_bcm
   #include "opt/bcm/bcm.h"
 #endif
@@ -32,6 +35,9 @@ extern struct genioc {
   #if PO_USE_drmfb
     struct drmfb *drmfb;
   #endif
+  #if PO_USE_drmgx
+    struct drmgx *drmgx;
+  #endif
   #if PO_USE_bcm
     struct bcm *bcm;
   #endif
@@ -46,6 +52,7 @@ extern struct genioc {
   volatile int sigc;
   int audio_skipc;
   int16_t audio_skipv;
+  const void *fbtmp;
 } genioc;
 
 #endif
