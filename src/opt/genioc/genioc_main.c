@@ -191,7 +191,7 @@ static int genioc_init_video_driver(int argc,char **argv) {
       genioc_argv_get_string(argc,argv,"--video-device",0),
       genioc_argv_get_int(argc,argv,"--video-rate",60),
       96,64,DRMGX_FMT_TINY16,
-      genioc_argv_get_int(argc,argv,"--viideo-filter",0),
+      genioc_argv_get_int(argc,argv,"--video-filter",0),
       genioc_argv_get_int(argc,argv,"--glsl-version",0)
     )) {
       fprintf(stderr,"Using DRM with GLES for video.\n");
