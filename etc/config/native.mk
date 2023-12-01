@@ -1,15 +1,39 @@
 # native.mk
 # Rules for building the game for your PC.
 
-PO_NATIVE_PLATFORM:=linux
+UNAMESMN:=$(shell uname -smn)
+ifeq ($(UNAMESMN),Linux aarch64 raspberrypi)
+  # Pi 4. Use DRM only.
+  PO_NATIVE_PLATFORM:=linuxguiless
+else ifneq (,$(strip $(filter raspberrypi,$(UNAMESMN))))
+  # Other Pi. Use BCM only.
+  PO_NATIVE_PLATFORM:=raspi
+else ifneq (,$(strip $(filter vcs,$(UNAMESMN))))
+  # Atari VCS, another bespoke game console i use. DRM only.
+  PO_NATIVE_PLATFORM:=linuxguiless
+else ifneq (,$(strip $(filter Linux,$(UNAMESMN))))
+  # Linux in general, use both DRM and GLX
+  PO_NATIVE_PLATFORM:=linux
+else
+  $(error Unable to detect host configuration)
+endif
 
 ifeq ($(PO_NATIVE_PLATFORM),linux) #-----------------------------------------------
 
   CC_NATIVE:=gcc -c -MMD -O2 -Isrc -Isrc/main -Werror -Wimplicit -DPO_NATIVE=1 -I/usr/include/libdrm
   LD_NATIVE:=gcc
-  LDPOST_NATIVE:=-lm -lz -lasound -lX11 -lpthread -ldrm
-  OPT_ENABLE_NATIVE:=genioc alsa x11 drmfb evdev
+  LDPOST_NATIVE:=-lm -lz -lasound -lX11 -lpthread -ldrm -lEGL -lgbm -lGLESv2
+  OPT_ENABLE_NATIVE:=genioc alsa x11 drmgx evdev
   OPT_ENABLE_TOOL:=alsa ossmidi inotify
+  EXE_NATIVE:=out/native/pokorc
+
+else ifeq ($(PO_NATIVE_PLATFORM),linuxguiless) #----------------------------------
+# Same as Linux but no X11 option.
+
+  CC_NATIVE:=gcc -c -MMD -O2 -Isrc -Isrc/main -Werror -Wimplicit -DPO_NATIVE=1 -I/usr/include/libdrm
+  LD_NATIVE:=gcc
+  LDPOST_NATIVE:=-lm -lz -lasound -lpthread -ldrm -lEGL -lgbm -lGLESv2
+  OPT_ENABLE_NATIVE:=genioc alsa drmgx evdev
   EXE_NATIVE:=out/native/pokorc
 
 else ifeq ($(PO_NATIVE_PLATFORM),raspi) #-----------------------------------------

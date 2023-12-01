@@ -3,6 +3,57 @@
 
 struct genioc genioc={0};
 
+/* argv
+ */
+ 
+static void genioc_print_help(const char *exename) {
+  fprintf(stderr,"Usage: %s [OPTIONS]\n",exename);
+  fprintf(stderr,
+    "OPTIONS:\n"
+    "  --fullscreen           GLX only, start fullscreen.\n"
+    "  --video-device=PATH    DRM only.\n"
+    "  --video-rate=HZ        DRM only, guides our mode selection, not exact.\n"
+    "  --glsl-version=INT     DRM only, default 100.\n"
+    "  --audio-device=PATH    ALSA only.\n"
+    "  --audio-rate=INT       Default 22050.\n"
+    "  --audio-chanc=INT      Default 1. In stereo, we output the same thing L and R.\n"
+  );
+}
+
+static int genioc_argv_get_boolean(int argc,char **argv,const char *k) {
+  int p=1; for (;p<argc;p++) {
+    if (!strcmp(argv[p],k)) return 1;
+  }
+  return 0;
+}
+
+static int genioc_argv_get_int(int argc,char **argv,const char *k,int fallback) {
+  int kc=0; while (k[kc]) kc++;
+  int p=1; for (;p<argc;p++) {
+    if (memcmp(argv[p],k,kc)) continue;
+    if (argv[p][kc]!='=') continue;
+    int v=0;
+    const char *src=argv[p]+kc+1;
+    for (;*src;src++) {
+      if ((*src<'0')||(*src>'9')) return fallback;
+      v*=10;
+      v+=(*src)-'0';
+    }
+    return v;
+  }
+  return fallback;
+}
+
+static const char *genioc_argv_get_string(int argc,char **argv,const char *k,const char *fallback) {
+  int kc=0; while (k[kc]) kc++;
+  int p=1; for (;p<argc;p++) {
+    if (memcmp(argv[p],k,kc)) continue;
+    if (argv[p][kc]!='=') continue;
+    return argv[p]+kc+1;
+  }
+  return fallback;
+}
+
 /* Quit drivers.
  */
  
@@ -12,6 +63,9 @@ static void genioc_quit_drivers() {
   #endif
   #if PO_USE_drmfb
     drmfb_del(genioc.drmfb);
+  #endif
+  #if PO_USE_drmgx
+    drmgx_del(genioc.drmgx);
   #endif
   #if PO_USE_bcm
     bcm_del(genioc.bcm);
@@ -110,14 +164,12 @@ static int genioc_cb_evdev(struct po_evdev *evdev,uint8_t btnid,int value) {
 
 /* Init video driver.
  */
- 
-#define FULLSCREEN_INITIALLY 1
 
-static int genioc_init_video_driver() {
+static int genioc_init_video_driver(int argc,char **argv) {
   #if PO_USE_x11
     if (genioc.x11=po_x11_new(
       "Pocket Orchestra",
-      96,64,FULLSCREEN_INITIALLY,
+      96,64,genioc_argv_get_boolean(argc,argv,"--fullscreen"),
       genioc_cb_x11_button,
       genioc_cb_x11_close,
       &genioc
@@ -128,8 +180,21 @@ static int genioc_init_video_driver() {
   #endif
   
   #if PO_USE_drmfb
-    if (genioc.drmfb=drmfb_new(96,64,60)) {
-      fprintf(stderr,"Using DRM for video.\n");
+    if (genioc.drmfb=drmfb_new(96,64,genioc_argv_get_int(argc,argv,"--video-rate",60))) {
+      fprintf(stderr,"Using DRM unaccelerated for video.\n");
+      return 0;
+    }
+  #endif
+
+  #if PO_USE_drmgx
+    if (genioc.drmgx=drmgx_new(
+      genioc_argv_get_string(argc,argv,"--video-device",0),
+      genioc_argv_get_int(argc,argv,"--video-rate",60),
+      96,64,DRMGX_FMT_TINY16,
+      genioc_argv_get_int(argc,argv,"--viideo-filter",0),
+      genioc_argv_get_int(argc,argv,"--glsl-version",0)
+    )) {
+      fprintf(stderr,"Using DRM with GLES for video.\n");
       return 0;
     }
   #endif
@@ -148,12 +213,12 @@ static int genioc_init_video_driver() {
 /* Init audio driver.
  */
  
-static int genioc_init_audio_driver() {
+static int genioc_init_audio_driver(int argc,char **argv) {
   #if PO_USE_alsa
     struct alsa_delegate alsa_delegate={
-      .rate=22050,
-      .chanc=1,
-      .device=0,
+      .rate=genioc_argv_get_int(argc,argv,"--audio-rate",22050),
+      .chanc=genioc_argv_get_int(argc,argv,"--audio-chanc",1),
+      .device=genioc_argv_get_string(argc,argv,"--audio-device",0),
       .cb_pcm_out=genioc_cb_alsa,
     };
     if (genioc.alsa=alsa_new(&alsa_delegate)) {
@@ -169,12 +234,12 @@ static int genioc_init_audio_driver() {
 /* Init drivers.
  */
  
-static int genioc_init_drivers() {
+static int genioc_init_drivers(int argc,char **argv) {
 
   signal(SIGINT,genioc_rcvsig);
 
-  if (genioc_init_video_driver()<0) return -1;
-  if (genioc_init_audio_driver()<0) return -1;
+  if (genioc_init_video_driver(argc,argv)<0) return -1;
+  if (genioc_init_audio_driver(argc,argv)<0) return -1;
   
   #if PO_USE_evdev
     if (!(genioc.evdev=po_evdev_new(genioc_cb_evdev,&genioc))) {
@@ -217,24 +282,41 @@ uint8_t platform_update() {
 }
 
 /* Receive framebuffer.
+ * We run the whole client update inside an audio lock.
+ * There's reasons for that, don't worry about it.
+ * But the video swap might block, and that could be a problem.
+ * So we'll only record the framebuffer address when client sends it, and commit once the audio is unlocked.
+ * This introduces a danger that changes to the framebuffer after platform_send_framebuffer() would be sent early.
+ * Pretty safe to assume that the app is not doing that, that its platform_send_framebuffer() is the very end of the cycle.
  */
  
 void platform_send_framebuffer(const void *fb) {
+  genioc.fbtmp=fb;
+}
+
+static void genioc_finish_video_frame() {
+  if (!genioc.fbtmp) return;
   #if PO_USE_x11
     if (genioc.x11) {
-      po_x11_swap(genioc.x11,fb);
+      po_x11_swap(genioc.x11,genioc.fbtmp);
       return;
     }
   #endif
   #if PO_USE_drmfb
     if (genioc.drmfb) {
-      drmfb_swap(genioc.drmfb,fb);
+      drmfb_swap(genioc.drmfb,genioc.fbtmp);
+      return;
+    }
+  #endif
+  #if PO_USE_drmgx
+    if (genioc.drmgx) {
+      drmgx_swap(genioc.drmgx,genioc.fbtmp);
       return;
     }
   #endif
   #if PO_USE_bcm
     if (genioc.bcm) {
-      bcm_swap(genioc.bcm,fb);
+      bcm_swap(genioc.bcm,genioc.fbtmp);
       return;
     }
   #endif
@@ -325,7 +407,11 @@ static void XXX_tempmain() {
 int main(int argc,char **argv) {
   //XXX_tempmain();
   //return 0;
-  if (genioc_init_drivers()<0) {
+  if (genioc_argv_get_boolean(argc,argv,"--help")) {
+    genioc_print_help(argv[0]);
+    return 0;
+  }
+  if (genioc_init_drivers(argc,argv)<0) {
     fprintf(stderr,"Failed to initialize drivers.\n");
     return 1;
   }
@@ -337,7 +423,7 @@ int main(int argc,char **argv) {
   int64_t nexttime=now_us();
   int64_t starttime=nexttime;
   while (!genioc.terminate&&!genioc.sigc) {
-    
+  
     int64_t now=now_us();
     while (now<nexttime) {
       int64_t sleeptime=nexttime-now;
@@ -361,6 +447,7 @@ int main(int argc,char **argv) {
     #if PO_USE_alsa
       alsa_unlock(genioc.alsa);
     #endif
+    genioc_finish_video_frame();
   }
   
   if (framec>0) {
