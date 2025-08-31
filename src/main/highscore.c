@@ -33,7 +33,7 @@ static uint8_t highscore_count=0; // in records
   static char highscore_path_storage[1024];
   static const char *highscore_path() {
     const char *home=getenv("HOME");
-    int c=snprintf(highscore_path_storage,sizeof(highscore_path_storage),"%s/.pocket-orchestra/highscore",home);
+    int c=snprintf(highscore_path_storage,sizeof(highscore_path_storage),"%s/.config/aksomm/pocket-orchestra/highscore",home);
     if ((c<1)||(c>=sizeof(highscore_path_storage))) return 0;
     int slashp=c-1;
     while (slashp&&(highscore_path_storage[slashp]!='/')) slashp--;
